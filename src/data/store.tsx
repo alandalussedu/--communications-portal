@@ -32,7 +32,21 @@ declare global {
   }
 }
 
+/**
+ * Claude serves the platform inside a frame and injects `window.claude`. A page
+ * opened on its own (the public copy on GitHub Pages) never gets the runtime, so
+ * it goes straight to public-data.json instead of waiting out the timeout.
+ */
+function standalonePage(): boolean {
+  try {
+    return window.self === window.top && !/(^|\.)claude(usercontent)?\.(ai|com)$/i.test(location.hostname)
+  } catch {
+    return false // cross-origin parent: we are framed
+  }
+}
+
 async function waitForRuntime(ms = 4000): Promise<Window["claude"] | null> {
+  if (!window.claude && standalonePage()) return null
   const start = Date.now()
   while (Date.now() - start < ms) {
     if (window.claude && typeof window.claude.use === "function") return window.claude
