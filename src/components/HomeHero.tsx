@@ -13,6 +13,12 @@ const MAX_VIDEO_BYTES = 2 * 1024 * 1024
 
 const blobUrl = (id: string | null | undefined) => (id && /^[0-9a-f]{32}$/i.test(id) ? `/_blob/${id}` : null)
 
+/* On the public copy (GitHub Pages) the platform's asset store is not there, so
+ * the band plays files published next to the page. Each list is tried in order. */
+const SITE_VIDEO = "hero.mp4"
+const SITE_POSTER = "hero.jpg"
+const sources = (blob: string | null, site: string, publicCopy: boolean) => (publicCopy ? [site, blob] : [blob]).filter((s): s is string => !!s)
+
 /* ------------------------------------------------------------ when to play */
 type NetInfo = { saveData?: boolean; effectiveType?: string; addEventListener?: (t: string, f: () => void) => void; removeEventListener?: (t: string, f: () => void) => void }
 function stillReason(): boolean {
@@ -46,23 +52,28 @@ function usePreferStill() {
 /* ------------------------------------------------------------ background */
 function HeroMedia({ hero, paused, onLive }: { hero: HeroSettings | undefined; paused: boolean; onLive: (live: boolean) => void }) {
   const preferStill = usePreferStill()
-  const video = blobUrl(hero?.videoId)
-  const poster = blobUrl(hero?.posterId)
-  const [videoFailed, setVideoFailed] = useState(false)
+  const publicCopy = !!useStore().snapshotAt
+  const videos = sources(blobUrl(hero?.videoId), SITE_VIDEO, publicCopy)
+  const posters = sources(blobUrl(hero?.posterId), SITE_POSTER, publicCopy)
+  const [videoTry, setVideoTry] = useState(0)
+  const [posterTry, setPosterTry] = useState(0)
+  const video = videos[videoTry] ?? null
+  const poster = posters[posterTry] ?? null
   const [videoShown, setVideoShown] = useState(false)
   const [posterShown, setPosterShown] = useState(false)
-  const [posterFailed, setPosterFailed] = useState(false)
   const ref = useRef<HTMLVideoElement>(null)
-  const playVideo = !!video && !hero?.videoOff && !preferStill && !videoFailed
+  const playVideo = !!video && !hero?.videoOff && !preferStill
 
+  const videoKey = videos.join("|")
+  const posterKey = posters.join("|")
   useEffect(() => {
-    setVideoFailed(false)
+    setVideoTry(0)
     setVideoShown(false)
-  }, [video])
+  }, [videoKey])
   useEffect(() => {
-    setPosterFailed(false)
+    setPosterTry(0)
     setPosterShown(false)
-  }, [poster])
+  }, [posterKey])
 
   useEffect(() => {
     const v = ref.current
@@ -78,18 +89,20 @@ function HeroMedia({ hero, paused, onLive }: { hero: HeroSettings | undefined; p
 
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-      {poster && !posterFailed && (
+      {poster && (
         <img
+          key={poster}
           src={poster}
           alt=""
           decoding="async"
           onLoad={() => setPosterShown(true)}
-          onError={() => setPosterFailed(true)}
+          onError={() => setPosterTry((n) => n + 1)}
           className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-700", posterShown ? "opacity-100" : "opacity-0")}
         />
       )}
       {playVideo && (
         <video
+          key={video}
           ref={ref}
           src={video}
           autoPlay
@@ -99,7 +112,7 @@ function HeroMedia({ hero, paused, onLive }: { hero: HeroSettings | undefined; p
           preload="auto"
           disablePictureInPicture
           onPlaying={() => setVideoShown(true)}
-          onError={() => setVideoFailed(true)}
+          onError={() => setVideoTry((n) => n + 1)}
           className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-700", videoShown ? "opacity-100" : "opacity-0")}
         />
       )}
