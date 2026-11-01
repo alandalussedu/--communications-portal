@@ -193,7 +193,7 @@ export function CalendarPage() {
                 options={[{ value: "all", label: "كل الفروع" }, { value: "none", label: "أحداث عامة" }, ...usedBranches.map((b) => ({ value: b.slug, label: b.name }))]}
               />
             )}
-            <div className="inline-flex h-9 rounded-md border bg-card p-0.5" role="radiogroup" aria-label="طريقة العرض">
+            <div className="inline-flex h-11 rounded-md border bg-card p-0.5" role="radiogroup" aria-label="طريقة العرض">
               {(
                 [
                   ["month", "شهري", LayoutGrid],
@@ -206,7 +206,7 @@ export function CalendarPage() {
                   role="radio"
                   aria-checked={view === k}
                   onClick={() => setView(k)}
-                  className={cn("inline-flex items-center gap-1.5 rounded px-2.5 text-[14px]", view === k ? "bg-primary font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent")}
+                  className={cn("inline-flex items-center gap-1.5 rounded px-3 text-[14px]", view === k ? "bg-primary font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent")}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
                   {label}
@@ -765,7 +765,7 @@ export function UpcomingStrip({ className = "mt-5" }: { className?: string }) {
           <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
           القادم في رحلة التواصل
         </h2>
-        <button type="button" onClick={() => go({ page: "calendar" })} className="inline-flex items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
+        <button type="button" onClick={() => go({ page: "calendar" })} className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
           التقويم كاملًا
           <ArrowLeft className="h-4 w-4" />
         </button>

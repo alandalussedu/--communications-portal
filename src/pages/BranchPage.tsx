@@ -180,8 +180,7 @@ function BranchBody({ row, summaries }: { row: BranchRow; summaries: IndicatorSu
       <div
         role="tablist"
         aria-label="أقسام ملف الفرع"
-        className="sticky z-20 -mx-4 mt-5 flex gap-1 overflow-x-auto border-b bg-background/95 px-4 backdrop-blur [scrollbar-width:none]"
-        style={{ top: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
+        className="sticky top-[env(safe-area-inset-top,0px)] z-20 -mx-4 mt-5 flex gap-1 overflow-x-auto border-b bg-background/95 px-4 backdrop-blur [scrollbar-width:none] md:top-[calc(env(safe-area-inset-top,0px)+56px)]"
       >
         {SECTIONS.map(([id, label]) => (
           <button

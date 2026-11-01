@@ -73,7 +73,7 @@ export function HomePage() {
                 ))}
               </ul>
             )}
-            <button type="button" onClick={() => openLibrary(go, q.trim())} className="mt-1 inline-flex items-center gap-1.5 px-3 py-2 text-[15px] font-bold text-primary hover:underline">
+            <button type="button" onClick={() => openLibrary(go, q.trim())} className="mt-1 inline-flex min-h-11 items-center gap-1.5 px-3 py-2 text-[15px] font-bold text-primary hover:underline">
               {hits.length ? `كل النتائج في المكتبة (${formatNumber(hits.length)})` : "فتح المكتبة"}
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -94,7 +94,7 @@ export function HomePage() {
       <Gate needs={["files", "settings"]}>
         {/* 2 · library sections */}
         <h2 className="sr-only">أقسام المكتبة</h2>
-        <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <ul className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
           {LIBRARY_SECTIONS.map((s, i) => {
             const Icon = SECTION_ICON[s.key]
             const n = countOf(s.key)
@@ -135,7 +135,7 @@ export function HomePage() {
               )}
             </div>
             <div className="border-t px-5 py-3">
-              <button type="button" onClick={() => openLibrary(go, "")} className="inline-flex items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
+              <button type="button" onClick={() => openLibrary(go, "")} className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
                 فتح المكتبة
                 <ArrowLeft className="h-4 w-4" />
               </button>

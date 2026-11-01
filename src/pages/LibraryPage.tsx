@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Check, Download, FileText, FileType2, Folder, LayoutGrid, List, Pencil, Plus, Search, Settings2, Tags, X } from "lucide-react"
+import { Check, ChevronDown, Download, FileText, FileType2, Folder, LayoutGrid, List, Pencil, Plus, Search, Settings2, SlidersHorizontal, Tags, X } from "lucide-react"
 import { useStore } from "@/data/store"
 import { FILE_STATUSES, LIBRARY_SECTIONS, type FileItem, type FileStatus, type LibrarySection } from "@/data/types"
 import { useRouter } from "@/lib/router"
@@ -39,6 +39,7 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
   const [status, setStatus] = usePersistent<StatusFilter>("lib-status", "all")
   const [owner, setOwner] = usePersistent("lib-owner", "all")
   const [date, setDate] = usePersistent<DateFilter>("lib-date", "all")
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [showInactive, setShowInactive] = usePersistent("lib-inactive", false)
   const [sort, setSort] = usePersistent<SortKey>("lib-sort", "relevance")
   const [view, setView] = usePersistent<"cards" | "table">("lib-view", "cards")
@@ -228,6 +229,22 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
           </div>
 
           <div className="flex flex-col gap-3 px-5 py-4">
+            {/* phones: the filters fold behind one button so the results come first */}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((o) => !o)}
+              aria-expanded={filtersOpen}
+              aria-controls="lib-filters"
+              className="inline-flex h-11 items-center justify-between gap-2 rounded-xl border px-4 text-[15px] font-bold md:hidden"
+            >
+              <span className="inline-flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                تصفية النتائج
+                {active.length > 0 && <span className="num rounded-full bg-primary px-2 text-[13px] leading-6 text-primary-foreground">{formatNumber(active.length)}</span>}
+              </span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", filtersOpen && "rotate-180")} aria-hidden="true" />
+            </button>
+            <div id="lib-filters" className={cn("flex-col gap-3", filtersOpen ? "flex" : "hidden md:flex")}>
             <ChipGroup
               label="التصنيف"
               value={group}
@@ -289,13 +306,14 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
                   { value: "date", label: "الأحدث تحديثًا" },
                 ]}
               />
-              <label className="flex items-end gap-2 pb-1.5 text-[15px]">
+              <label className="flex min-h-11 items-end gap-2 pb-1.5 text-[15px]">
                 <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-5 w-5 accent-[hsl(var(--primary))]" />
                 <span>
                   إظهار المسودات والمؤرشف
                   <span className="num ms-1 text-muted-foreground">({formatNumber(inactiveCount)})</span>
                 </span>
               </label>
+            </div>
             </div>
             {active.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 border-t pt-3">

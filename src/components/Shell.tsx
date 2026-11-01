@@ -12,12 +12,13 @@ import { Chevrons, Dot, Octagram } from "./common"
 // رابط دخول المشرف (اختياري). فارغ = لا تظهر الأيقونة. في نسخة GitHub لا يوجد تعديل حي.
 const ADMIN_URL = ""
 
-const NAV: { page: Route["page"]; label: string; icon: typeof House; also?: Route["page"][]; locked?: boolean }[] = [
-  { page: "overview", label: "الرئيسية", icon: House },
-  { page: "library", label: "المكتبة", icon: FolderOpen },
-  { page: "calendar", label: "رحلة التواصل", icon: CalendarDays },
-  { page: "social", label: "التواصل الاجتماعي", icon: Megaphone },
-  { page: "indicators", label: "الأداء والتطوير", icon: BarChart3, also: LOCKED_PAGES, locked: true },
+/** `short` is the label under the icon in the phone tab bar, where width is tight. */
+const NAV: { page: Route["page"]; label: string; short: string; icon: typeof House; also?: Route["page"][]; locked?: boolean }[] = [
+  { page: "overview", label: "الرئيسية", short: "الرئيسية", icon: House },
+  { page: "library", label: "المكتبة", short: "المكتبة", icon: FolderOpen },
+  { page: "calendar", label: "رحلة التواصل", short: "الرحلة", icon: CalendarDays },
+  { page: "social", label: "التواصل الاجتماعي", short: "التواصل", icon: Megaphone },
+  { page: "indicators", label: "الأداء والتطوير", short: "الأداء", icon: BarChart3, also: LOCKED_PAGES, locked: true },
 ]
 
 export function SyncStatus({ onBand = false }: { onBand?: boolean }) {
@@ -84,7 +85,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="min-h-full">
       {/* «ضوء المشربية»: decorative lattice in the side margins only (wide screens) */}
       <div className="lattice-frame" aria-hidden="true" />
-      <header className="pattern-stars relative overflow-hidden bg-band text-band-foreground">
+      <header className="pattern-stars relative overflow-hidden bg-band text-band-foreground" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <Octagram className="pointer-events-none absolute -end-20 -top-28 h-80 w-80 text-white/[0.08]" strokeWidth={0.8} />
         <div className="gutter relative mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 py-3">
           <button type="button" onClick={() => go({ page: "overview" })} className="flex items-center gap-4 text-start">
@@ -102,7 +103,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <nav className="nav-glint sticky z-30 border-b bg-card/95 backdrop-blur" style={{ top: "env(safe-area-inset-top, 0px)" }} aria-label="أقسام المنصة">
+      {/* tablets and up: the row of tabs under the header */}
+      <nav className="nav-glint sticky top-0 z-30 hidden border-b bg-card/95 backdrop-blur md:block" style={{ top: "env(safe-area-inset-top, 0px)" }} aria-label="أقسام المنصة">
         <div className="gutter mx-auto max-w-[1200px]">
           <ul className="flex gap-1 overflow-x-auto py-2 [scrollbar-width:none]">
             {NAV.map((n) => {
@@ -131,9 +133,43 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </nav>
 
+      {/* phones: a fixed tab bar at the bottom, as in a native app */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        aria-label="أقسام المنصة"
+      >
+        <ul className="mx-auto grid max-w-[560px] grid-cols-5">
+          {NAV.map((n) => {
+            const active = route.page === n.page || n.also?.includes(route.page)
+            const Icon = n.icon
+            return (
+              <li key={n.page}>
+                <button
+                  type="button"
+                  onClick={() => go({ page: n.page } as Route)}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={n.label}
+                  className={cn("relative flex h-16 w-full flex-col items-center justify-center gap-1 text-[12px] transition-colors", active ? "font-bold text-primary" : "text-muted-foreground")}
+                >
+                  <span className={cn("relative inline-flex h-8 w-14 items-center justify-center rounded-full transition-colors", active && "bg-primary/10")}>
+                    <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
+                    {badge[n.page] && <span className="absolute -end-2 -top-1">{badge[n.page]}</span>}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    {n.short}
+                    {n.locked && !open && <Lock className="h-3 w-3 opacity-70" aria-hidden="true" />}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
+
       <main className="gutter relative mx-auto max-w-[1200px] pb-16">{children}</main>
 
-      <footer className="gutter relative mx-auto max-w-[1200px] pb-10">
+      <footer className="gutter relative mx-auto max-w-[1200px] pb-28 md:pb-10">
         <div className="flex items-center gap-3 text-primary">
           <span className="h-px flex-1 bg-primary/40" aria-hidden="true" />
           <Octagram className="h-7 w-7 text-sky" strokeWidth={4} />

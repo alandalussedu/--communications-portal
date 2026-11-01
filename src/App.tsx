@@ -62,7 +62,7 @@ export default function App() {
           <Shell>
             <Pages />
           </Shell>
-          <Toaster position="bottom-left" richColors={false} closeButton />
+          <Toaster position="bottom-left" richColors={false} closeButton mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }} />
         </DataProvider>
       </RouterProvider>
     </DirectionProvider>
