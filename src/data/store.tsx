@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import type { AlertState, Branch, CalendarEvent, CollectionName, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
+import { standalonePage } from "@/lib/runtime"
 
 /* ------------------------------------------------------------------ runtime */
 // The viewer injects `window.claude`. Outside the viewer it is absent and the
@@ -29,19 +30,6 @@ type Row = { id: string } & Record<string, unknown>
 declare global {
   interface Window {
     claude?: { use: (name: string) => Promise<unknown> }
-  }
-}
-
-/**
- * Claude serves the platform inside a frame and injects `window.claude`. A page
- * opened on its own (the public copy on GitHub Pages) never gets the runtime, so
- * it goes straight to public-data.json instead of waiting out the timeout.
- */
-function standalonePage(): boolean {
-  try {
-    return window.self === window.top && !/(^|\.)claude(usercontent)?\.(ai|com)$/i.test(location.hostname)
-  } catch {
-    return false // cross-origin parent: we are framed
   }
 }
 
