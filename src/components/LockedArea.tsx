@@ -6,6 +6,7 @@ import { useRouter, type Route } from "@/lib/router"
 import { passwordIssues } from "@/lib/vault"
 import { cn } from "@/lib/utils"
 import { Banner, Octagram, Panel, LoadingBlock } from "./common"
+import { LoginForm } from "./EditorLogin"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][] }[] = [
@@ -20,7 +21,7 @@ const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route
 
 /** Everything under «المؤشرات» renders through here: setup, unlock, or the pages with their own sub-navigation. */
 export function LockedArea({ children }: { children: ReactNode }) {
-  const { vault, connection } = useStore()
+  const { vault, connection, member } = useStore()
 
   if (connection.kind === "unavailable")
     return (
@@ -41,7 +42,7 @@ export function LockedArea({ children }: { children: ReactNode }) {
       </Centered>
     )
   if (vault.status === "none") return vault.isOwner && vault.setupReady ? <SetupScreen /> : <NotReady owner={vault.isOwner} />
-  if (vault.status === "locked") return <UnlockScreen />
+  if (vault.status === "locked") return member.enabled ? <MemberGate /> : <UnlockScreen />
   return (
     <>
       <SubNav />
@@ -59,7 +60,7 @@ export function LockedArea({ children }: { children: ReactNode }) {
 
 function SubNav() {
   const { route, go } = useRouter()
-  const { data, vault } = useStore()
+  const { data, vault, member } = useStore()
   const [changing, setChanging] = useState(false)
   const openAlerts = useMemo(() => (data.branches.length ? buildAlerts(data).filter((a) => !isHandled(a, data.alertState)).length : 0), [data])
   return (
@@ -88,7 +89,7 @@ function SubNav() {
         })}
       </ul>
       <div className="flex shrink-0 items-center gap-1">
-        {vault.isOwner && (
+        {vault.isOwner && !member.enabled && (
           <button type="button" onClick={() => setChanging(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[14px] text-muted-foreground hover:bg-accent hover:text-foreground">
             <KeyRound className="h-4 w-4" aria-hidden="true" />
             كلمة المرور
@@ -96,7 +97,7 @@ function SubNav() {
         )}
         <button type="button" onClick={vault.lock} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-[14px] text-muted-foreground hover:bg-accent hover:text-foreground">
           <Lock className="h-4 w-4" aria-hidden="true" />
-          قفل
+          {member.enabled ? "خروج" : "قفل"}
         </button>
       </div>
       <Sheet open={changing} onOpenChange={setChanging}>
@@ -170,6 +171,21 @@ function SubmitButton({ busy, children }: { busy: boolean; children: ReactNode }
       {busy && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
       {children}
     </button>
+  )
+}
+
+/** Public site / app: each communication officer signs in with their own account. */
+function MemberGate() {
+  const { member } = useStore()
+  return (
+    <Centered title="سجّل الدخول" icon={<ShieldCheck className="h-6 w-6" aria-hidden="true" />}>
+      <p className="mb-5 text-[16px] leading-relaxed text-muted-foreground">هذا القسم لمسؤولي التواصل في الفروع وفريق إدارة التواصل المؤسسي. ادخل برقم جوالك وكلمة المرور.</p>
+      {member.mustChange ? (
+        <p className="text-[15px] text-muted-foreground">اختر كلمة مرور جديدة من النافذة الظاهرة للمتابعة.</p>
+      ) : (
+        <LoginForm />
+      )}
+    </Centered>
   )
 }
 

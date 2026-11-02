@@ -13,8 +13,9 @@ export type Route =
   | { page: "calendar" }
   | { page: "remedial"; slug?: string }
   | { page: "competitors" }
+  | { page: "members" }
 
-const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors"] as const
+const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members"] as const
 
 /** Pages behind the password (the «المؤشرات» tab and everything under it). */
 export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "builder", "alerts", "sources", "competitors"]

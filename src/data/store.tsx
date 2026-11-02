@@ -4,7 +4,7 @@ import type { AlertState, Branch, CalendarEvent, CollectionName, Competitor, Com
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
-import { backendConfigured, backendRuntime, onSignInChange } from "@/lib/backend"
+import { backendConfigured, backendRuntime, onSignInChange, signOut } from "@/lib/backend"
 
 /* ------------------------------------------------------------------ runtime */
 // The viewer injects `window.claude`. Outside the viewer it is absent and the
@@ -25,7 +25,11 @@ type Db = {
     delete(): Promise<void>
   }
 }
-type UserNs = { canEdit(): Promise<boolean>; isOwner?(): Promise<boolean> }
+type UserNs = { canEdit(): Promise<boolean>; isOwner?(): Promise<boolean>; me?(): Promise<MemberInfo | null> }
+type MemberInfo = { name: string; role: MemberRole; must_change_password: boolean }
+export type MemberRole = "viewer" | "editor" | "owner"
+/** Signed-in member on the public site / app (Supabase). `enabled` is false inside Claude and in the read-only copy. */
+export type Member = { enabled: boolean; checked: boolean; role: MemberRole | null; name: string | null; mustChange: boolean; recheck(): void }
 type Row = { id: string } & Record<string, unknown>
 
 declare global {
@@ -118,6 +122,7 @@ type Store = {
   saveEvent(ev: CalendarEvent): Promise<boolean>
   deleteEvent(id: string): Promise<boolean>
   vault: Vault
+  member: Member
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -155,6 +160,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [vaultDoc, setVaultDoc] = useState<VaultDoc | null>(null)
   const [vaultLoaded, setVaultLoaded] = useState(false)
   const [snapshotAt, setSnapshotAt] = useState<string | null>(null)
+  const [memberMode, setMemberMode] = useState(false)
+  const [memberInfo, setMemberInfo] = useState<{ checked: boolean; info: MemberInfo | null }>({ checked: false, info: null })
+  const userRef = useRef<UserNs | null>(null)
   const [setupKey, setSetupKey] = useState<{ key: string; keyId: string } | null>(null)
   const [keyOpen, setKeyOpen] = useState(false)
   const [hiddenBy, setHiddenBy] = useState<Record<string, { hidden: number; failed: number }>>({})
@@ -248,13 +256,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         rt.use("user").catch(() => null) as Promise<UserNs | null>,
       ])
       if (cancelled) return
-      const checkUser = () => {
-        user?.canEdit().then((v) => !cancelled && setCanEdit(Boolean(v))).catch(() => {})
-        user?.isOwner?.().then((v) => !cancelled && setIsOwner(Boolean(v))).catch(() => {})
+      const supabaseMode = (rt as { kind?: string }).kind === "supabase" && !!db
+      setMemberMode(supabaseMode)
+      userRef.current = user
+      user?.canEdit().then((v) => !cancelled && setCanEdit(Boolean(v))).catch(() => {})
+      user?.isOwner?.().then((v) => !cancelled && setIsOwner(Boolean(v))).catch(() => {})
+      if (supabaseMode) {
+        user?.me?.()
+          .then((info) => !cancelled && setMemberInfo({ checked: true, info }))
+          .catch(() => !cancelled && setMemberInfo({ checked: true, info: null }))
+        // what the database lets this person read changes with who is signed in: reload everything
+        unsubs.push(onSignInChange(() => setEpoch((e) => e + 1)))
       }
-      checkUser()
-      // Supabase: editing turns on and off as an editor signs in or out
-      unsubs.push(onSignInChange(checkUser))
       if (!db) {
         if (await loadSnapshot()) return
         if (!cancelled)
@@ -570,19 +583,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const hiddenTotals = Object.values(hiddenBy).reduce((a, b) => ({ hidden: a.hidden + b.hidden, failed: a.failed + b.failed }), { hidden: 0, failed: 0 })
+  const recheckMember = useCallback(() => {
+    userRef.current?.me?.().then((info) => setMemberInfo({ checked: true, info })).catch(() => {})
+  }, [])
+  const member = useMemo<Member>(
+    () => ({
+      enabled: memberMode,
+      checked: memberInfo.checked,
+      role: memberInfo.info?.role ?? null,
+      name: memberInfo.info?.name ?? null,
+      mustChange: !!memberInfo.info?.must_change_password,
+      recheck: recheckMember,
+    }),
+    [memberMode, memberInfo, recheckMember],
+  )
+  const memberLock = useCallback(() => void signOut(), [])
+
   const vault = useMemo<Vault>(
     () => ({
-      status: !cryptoAvailable() ? "unsupported" : !vaultLoaded ? "loading" : !vaultDoc ? "none" : keyOpen ? "unlocked" : "locked",
-      isOwner,
+      // On the public site the members' sign-in replaces the shared password.
+      status: memberMode
+        ? !memberInfo.checked ? "loading" : memberInfo.info && !memberInfo.info.must_change_password ? "unlocked" : "locked"
+        : !cryptoAvailable() ? "unsupported" : !vaultLoaded ? "loading" : !vaultDoc ? "none" : keyOpen ? "unlocked" : "locked",
+      isOwner: memberMode ? memberInfo.info?.role === "owner" : isOwner,
       setupReady: !!setupKey,
       hidden: hiddenTotals.hidden,
       failed: hiddenTotals.failed,
       unlock,
-      lock,
+      lock: memberMode ? memberLock : lock,
       setup,
       changePassword,
     }),
-    [vaultLoaded, vaultDoc, keyOpen, isOwner, setupKey, hiddenTotals.hidden, hiddenTotals.failed, unlock, lock, setup, changePassword],
+    [memberMode, memberInfo, memberLock, vaultLoaded, vaultDoc, keyOpen, isOwner, setupKey, hiddenTotals.hidden, hiddenTotals.failed, unlock, lock, setup, changePassword],
   )
 
   const allLoaded = COLLECTIONS.every((c) => loaded[c])
@@ -610,8 +642,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveEvent,
       deleteEvent,
       vault,
+      member,
     }),
-    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, vault],
+    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, vault, member],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

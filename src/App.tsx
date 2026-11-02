@@ -16,6 +16,8 @@ import { SocialPage } from "@/pages/SocialPage"
 import { RemedialPage } from "@/pages/RemedialPage"
 import { CompetitorsPage } from "@/pages/CompetitorsPage"
 import { CalendarPage } from "@/pages/CalendarPage"
+import { MembersPage } from "@/pages/MembersPage"
+import { ForcePasswordChange } from "@/components/EditorLogin"
 
 function Pages() {
   const { route, nonce } = useRouter()
@@ -28,6 +30,8 @@ function Pages() {
       return <CalendarPage key={nonce} />
     case "overview":
       return <HomePage key={nonce} />
+    case "members":
+      return <MembersPage key={nonce} />
     default:
       return <LockedArea>{lockedPage(route, nonce)}</LockedArea>
   }
@@ -62,6 +66,7 @@ export default function App() {
           <Shell>
             <Pages />
           </Shell>
+          <ForcePasswordChange />
           <Toaster position="bottom-left" richColors={false} closeButton mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }} />
         </DataProvider>
       </RouterProvider>

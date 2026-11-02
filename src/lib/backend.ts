@@ -115,10 +115,11 @@ function makeDb(sb: SupabaseClient) {
 
 /* ------------------------------------------------------------ runtime */
 /** The same shape as `window.claude`, backed by Supabase. */
-export function backendRuntime(): { use: (name: string) => Promise<unknown> } | null {
+export function backendRuntime(): { kind: "supabase"; use: (name: string) => Promise<unknown> } | null {
   const sb = supabase()
   if (!sb) return null
   return {
+    kind: "supabase",
     async use(name: string) {
       if (name === "db") {
         // a quick read proves the project answers; otherwise the store falls back to public-data.json
@@ -130,6 +131,10 @@ export function backendRuntime(): { use: (name: string) => Promise<unknown> } | 
         return {
           canEdit: async () => (await sb.rpc("is_editor")).data === true,
           isOwner: async () => (await sb.rpc("is_owner")).data === true,
+          me: async () => {
+            const { data } = await sb.rpc("me")
+            return (Array.isArray(data) ? data[0] : data) ?? null
+          },
         }
       }
       return null
@@ -138,6 +143,21 @@ export function backendRuntime(): { use: (name: string) => Promise<unknown> } | 
 }
 
 /* ------------------------------------------------------------ sign-in */
+/**
+ * Members sign in with their mobile number. Supabase accounts are keyed by an
+ * internal address made from the number, so no SMS service is needed and no
+ * mail is ever sent. 05XXXXXXXX, 5XXXXXXXX, 9665XXXXXXXX and +9665XXXXXXXX all
+ * give the same account.
+ */
+export function normalizePhone(input: string): string | null {
+  const d = input.replace(/[\s\-()]/g, "").replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/^\+/, "").replace(/^00/, "")
+  if (/^05\d{8}$/.test(d)) return "966" + d.slice(1)
+  if (/^5\d{8}$/.test(d)) return "966" + d
+  if (/^9665\d{8}$/.test(d)) return d
+  return null
+}
+export const phoneLogin = (phone966: string) => `m${phone966}@members.andalus.invalid`
+
 export function useSession(): Session | null | undefined {
   const [session, setSession] = useState<Session | null | undefined>(backendConfigured ? undefined : null)
   useEffect(() => {
@@ -150,18 +170,61 @@ export function useSession(): Session | null | undefined {
   return session
 }
 
-export async function signIn(email: string, password: string): Promise<string | null> {
+export async function signIn(phoneInput: string, password: string): Promise<string | null> {
   const sb = supabase()
   if (!sb) return "قاعدة البيانات غير مهيأة."
-  const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password })
+  const phone = normalizePhone(phoneInput)
+  if (!phone) return "اكتب رقم الجوال بالشكل 05XXXXXXXX."
+  const { error } = await sb.auth.signInWithPassword({ email: phoneLogin(phone), password })
   if (!error) return null
-  if (/invalid login/i.test(error.message)) return "البريد أو كلمة المرور غير صحيحة."
-  if (/not confirmed/i.test(error.message)) return "لم يُفعَّل الحساب بعد. افتح رسالة التفعيل في بريدك."
+  if (/invalid login|invalid credentials/i.test(error.message)) return "رقم الجوال أو كلمة المرور غير صحيحة."
+  if (/banned|disabled/i.test(error.message)) return "هذا الحساب موقوف. تواصل مع إدارة التواصل المؤسسي."
+  if (/rate|too many/i.test(error.message)) return "محاولات كثيرة. انتظر دقائق ثم أعد المحاولة."
   return "تعذّر تسجيل الدخول. تحقق من الاتصال ثم أعد المحاولة."
 }
 
 export async function signOut(): Promise<void> {
   await supabase()?.auth.signOut()
+}
+
+/** Sets a new password and clears the «must change» mark. */
+export async function changeMyPassword(password: string): Promise<string | null> {
+  const sb = supabase()
+  if (!sb) return "قاعدة البيانات غير مهيأة."
+  const { error } = await sb.auth.updateUser({ password })
+  if (error) {
+    if (/same.*password|different from the old/i.test(error.message)) return "اختر كلمة مرور مختلفة عن الحالية."
+    if (/weak|short|at least/i.test(error.message)) return "كلمة المرور ضعيفة. استخدم 10 أحرف على الأقل."
+    return "لم تتغيّر كلمة المرور. أعد المحاولة."
+  }
+  const res = await sb.rpc("password_changed")
+  return res.error ? "تغيّرت كلمة المرور، لكن تعذّر تحديث الحساب. أعد تحميل الصفحة." : null
+}
+
+/* ------------------------------------------------------------ members admin */
+export type MemberRow = { user_id: string; name: string; phone: string; role: "viewer" | "editor" | "owner"; active: boolean; must_change_password: boolean; created_at: string; last_sign_in_at: string | null }
+type AdminReq =
+  | { action: "list" }
+  | { action: "create"; name: string; phone: string; role: MemberRow["role"] }
+  | { action: "reset"; user_id: string }
+  | { action: "update"; user_id: string; role?: MemberRow["role"]; active?: boolean; name?: string }
+
+/** Calls the admin-members function (owners only; the function checks). */
+export async function adminMembers<T = unknown>(req: AdminReq): Promise<{ data?: T; error?: string }> {
+  const sb = supabase()
+  if (!sb) return { error: "قاعدة البيانات غير مهيأة." }
+  const { data, error } = await sb.functions.invoke("admin-members", { body: req })
+  if (error) {
+    let msg = "تعذّر تنفيذ الطلب. أعد المحاولة."
+    try {
+      const body = await (error as { context?: Response }).context?.json()
+      if (body?.error) msg = body.error
+    } catch {
+      /* keep the generic message */
+    }
+    return { error: msg }
+  }
+  return { data: data as T }
 }
 
 /** Calls `fn` whenever someone signs in or out (not on token refresh). */
