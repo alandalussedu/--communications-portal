@@ -227,7 +227,7 @@ function SecretDialog({ secret, onClose }: { secret: { name: string; phone: stri
   const [copied, setCopied] = useState(false)
   if (!secret) return null
   const site = location.origin + location.pathname
-  const message = `مرحبًا ${secret.name}،\nحسابك في مركز التواصل المؤسسي جاهز.\nالرابط: ${site}\nرقم الجوال: ${showPhone(secret.phone)}\nكلمة المرور المؤقتة: ${secret.password}\nسيُطلب منك اختيار كلمة مرور جديدة عند أول دخول.`
+  const message = `مرحبًا ${secret.name}،\nحسابك في بوابة التواصل المؤسسي جاهز.\nالرابط: ${site}\nرقم الجوال: ${showPhone(secret.phone)}\nكلمة المرور المؤقتة: ${secret.password}\nسيُطلب منك اختيار كلمة مرور جديدة عند أول دخول.`
   return (
     <Sheet open onOpenChange={(o) => !o && (setCopied(false), onClose())}>
       <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-md" dir="rtl">

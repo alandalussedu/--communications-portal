@@ -163,7 +163,7 @@ export function EditorLogin({ onBand = false }: { onBand?: boolean }) {
           <SheetHeader className="pe-8 text-start">
             <SheetTitle className="text-start text-[22px] font-bold">{signedIn ? "حسابي" : "تسجيل الدخول"}</SheetTitle>
             <SheetDescription className="text-start text-[15px]">
-              {signedIn ? "حسابك في مركز التواصل المؤسسي." : "لمسؤولي التواصل وفريق إدارة التواصل المؤسسي. تصفّح المنصة العام لا يحتاج دخولًا."}
+              {signedIn ? "حسابك في بوابة التواصل المؤسسي." : "لمسؤولي التواصل وفريق إدارة التواصل المؤسسي. تصفّح المنصة العام لا يحتاج دخولًا."}
             </SheetDescription>
           </SheetHeader>
           <div className="mt-5">

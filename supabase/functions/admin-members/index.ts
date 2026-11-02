@@ -1,4 +1,4 @@
-// admin-members: user management for «مركز التواصل المؤسسي».
+// admin-members: user management for «بوابة التواصل المؤسسي».
 // Only an active owner (public.members.role = 'owner') may call it.
 // Actions: list · create · reset · update. Temporary passwords are returned once
 // to the owner and never stored or logged.

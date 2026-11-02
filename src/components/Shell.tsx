@@ -93,7 +93,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={LOGO_WHITE} alt="شركة الأندلس التعليمية" className="h-10 w-auto sm:h-11" />
             <span className="hidden h-9 w-px bg-white/25 sm:block" aria-hidden="true" />
             <span className="min-w-0">
-              <span className="block font-display text-[20px] font-bold leading-tight sm:text-[22px]">مركز التواصل المؤسسي</span>
+              <span className="block font-display text-[20px] font-bold leading-tight sm:text-[22px]">بوابة التواصل المؤسسي</span>
               <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-band-soft">
                 <Chevrons className="h-2.5 w-3 text-gold" />
                 إدارة التواصل المؤسسي · 2026/2027
