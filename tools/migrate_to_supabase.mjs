@@ -21,7 +21,18 @@ const COLLECTIONS = ["files", "settings", "socialAccounts", "socialReadings", "e
   "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta"]
 const { subtle } = globalThis.crypto
 const td = new TextDecoder(), te = new TextEncoder()
-const key = process.env.KEY ? await subtle.importKey("raw", Buffer.from(process.env.KEY, "base64"), { name: "AES-GCM" }, false, ["decrypt"]) : null
+// The setting may carry extra text around the key (a "KEY=" prefix, spaces, a new line):
+// take the one 32-byte base64 value (44 characters ending in "=") and nothing else.
+function keyBytes(raw) {
+  const found = raw.match(/[A-Za-z0-9+/]{43}=/g) ?? []
+  const valid = [...new Set(found)].filter((k) => Buffer.from(k, "base64").length === 32)
+  if (valid.length !== 1) {
+    console.error(`KEY: expected exactly one 32-byte base64 key in the value, found ${valid.length}`)
+    process.exit(3)
+  }
+  return Buffer.from(valid[0], "base64")
+}
+const key = process.env.KEY ? await subtle.importKey("raw", keyBytes(process.env.KEY), { name: "AES-GCM" }, false, ["decrypt"]) : null
 
 // the id is the row key in Supabase, not part of the document
 const META_FIELDS = new Set(["id"])
