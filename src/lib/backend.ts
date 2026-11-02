@@ -194,7 +194,7 @@ export async function changeMyPassword(password: string): Promise<string | null>
   const { error } = await sb.auth.updateUser({ password })
   if (error) {
     if (/same.*password|different from the old/i.test(error.message)) return "اختر كلمة مرور مختلفة عن الحالية."
-    if (/weak|short|at least/i.test(error.message)) return "كلمة المرور ضعيفة. استخدم 10 أحرف على الأقل."
+    if (/weak|short|at least/i.test(error.message)) return "كلمة المرور قصيرة. استخدم 8 أحرف أو أرقام على الأقل."
     return "لم تتغيّر كلمة المرور. أعد المحاولة."
   }
   const res = await sb.rpc("password_changed")

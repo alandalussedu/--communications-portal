@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Eye, EyeOff, KeyRound, Loader2, LogOut, ShieldCheck, UserRound, UserRoundCheck, Users } from "lucide-react"
 import { toast } from "sonner"
-import { backendConfigured, changeMyPassword, signIn, signOut, useSession } from "@/lib/backend"
+import { backendConfigured, changeMyPassword, normalizePhone, signIn, signOut, useSession } from "@/lib/backend"
 import { useStore, type MemberRole } from "@/data/store"
 import { useRouter } from "@/lib/router"
 import { cn } from "@/lib/utils"
@@ -15,8 +15,8 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
   const [show, setShow] = useState(false)
   return (
     <div className="relative">
-      <input id={id} type={show ? "text" : "password"} autoComplete={autoComplete} dir="ltr" required value={value} onChange={(e) => onChange(e.target.value)} className={cn(inputCls, "pe-11")} />
-      <button type="button" onClick={() => setShow((s) => !s)} className="absolute end-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent" aria-label={show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}>
+      <input id={id} type={show ? "text" : "password"} autoComplete={autoComplete} dir="ltr" required value={value} onChange={(e) => onChange(e.target.value)} className={cn(inputCls, "pl-3 pr-12")} />
+      <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent" aria-label={show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}>
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
     </div>
@@ -63,6 +63,7 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
 
 export function ChangePasswordForm({ onDone, first = false }: { onDone?: () => void; first?: boolean }) {
   const { member } = useStore()
+  const session = useSession()
   const [p1, setP1] = useState("")
   const [p2, setP2] = useState("")
   const [busy, setBusy] = useState(false)
@@ -73,8 +74,9 @@ export function ChangePasswordForm({ onDone, first = false }: { onDone?: () => v
       onSubmit={async (e) => {
         e.preventDefault()
         setError(null)
-        if (p1.length < 10) return setError("كلمة المرور 10 أحرف على الأقل.")
-        if (/^\+?\d+$/.test(p1)) return setError("لا تجعل كلمة المرور أرقامًا فقط، ولا رقم جوالك.")
+        if (p1.length < 8) return setError("كلمة المرور 8 أحرف أو أرقام على الأقل.")
+        const myPhone = /^m(\d+)@/.exec(session?.user.email ?? "")?.[1]
+        if (myPhone && normalizePhone(p1) === myPhone) return setError("لا تجعل كلمة المرور رقم جوالك.")
         if (p1 !== p2) return setError("الكلمتان غير متطابقتين.")
         setBusy(true)
         const err = await changeMyPassword(p1)
@@ -90,7 +92,7 @@ export function ChangePasswordForm({ onDone, first = false }: { onDone?: () => v
       <div>
         <label htmlFor="np1" className="mb-1 block text-[15px] font-medium">كلمة المرور الجديدة</label>
         <PasswordInput id="np1" value={p1} onChange={setP1} autoComplete="new-password" />
-        <p className="mt-1 text-[13px] text-muted-foreground">10 أحرف على الأقل، ولا تكون رقم جوالك.</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">8 أحرف أو أرقام على الأقل، بحسب رغبتك. لا تكون رقم جوالك.</p>
       </div>
       <div>
         <label htmlFor="np2" className="mb-1 block text-[15px] font-medium">أعد كتابتها</label>
