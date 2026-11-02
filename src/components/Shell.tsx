@@ -8,6 +8,7 @@ import { useStore } from "@/data/store"
 import { formatDate, formatTime } from "@/lib/format"
 import { LOGO_WHITE } from "@/assets/logo"
 import { Chevrons, Dot, Octagram } from "./common"
+import { EditorLogin } from "./EditorLogin"
 
 // رابط دخول المشرف (اختياري). فارغ = لا تظهر الأيقونة. في نسخة GitHub لا يوجد تعديل حي.
 const ADMIN_URL = ""
@@ -99,7 +100,10 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
             </span>
           </button>
-          <SyncStatus onBand />
+          <span className="inline-flex items-center gap-2">
+            <SyncStatus onBand />
+            <EditorLogin onBand />
+          </span>
         </div>
       </header>
 

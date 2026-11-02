@@ -4,6 +4,7 @@ import type { AlertState, Branch, CalendarEvent, CollectionName, Competitor, Com
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
+import { backendConfigured, backendRuntime, onSignInChange } from "@/lib/backend"
 
 /* ------------------------------------------------------------------ runtime */
 // The viewer injects `window.claude`. Outside the viewer it is absent and the
@@ -34,7 +35,8 @@ declare global {
 }
 
 async function waitForRuntime(ms = 4000): Promise<Window["claude"] | null> {
-  if (!window.claude && standalonePage()) return null
+  // outside Claude: the Supabase database when it is set up, otherwise the public copy
+  if (!window.claude && standalonePage()) return backendConfigured ? backendRuntime() : null
   const start = Date.now()
   while (Date.now() - start < ms) {
     if (window.claude && typeof window.claude.use === "function") return window.claude
@@ -246,8 +248,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         rt.use("user").catch(() => null) as Promise<UserNs | null>,
       ])
       if (cancelled) return
-      user?.canEdit().then((v) => !cancelled && setCanEdit(Boolean(v))).catch(() => {})
-      user?.isOwner?.().then((v) => !cancelled && setIsOwner(Boolean(v))).catch(() => {})
+      const checkUser = () => {
+        user?.canEdit().then((v) => !cancelled && setCanEdit(Boolean(v))).catch(() => {})
+        user?.isOwner?.().then((v) => !cancelled && setIsOwner(Boolean(v))).catch(() => {})
+      }
+      checkUser()
+      // Supabase: editing turns on and off as an editor signs in or out
+      unsubs.push(onSignInChange(checkUser))
       if (!db) {
         if (await loadSnapshot()) return
         if (!cancelled)
