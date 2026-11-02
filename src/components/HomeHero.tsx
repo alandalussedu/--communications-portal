@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { useStore } from "@/data/store"
 import type { HeroSettings } from "@/data/types"
 import { cn } from "@/lib/utils"
+import { standalonePage } from "@/lib/runtime"
 import { Chevrons } from "./common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
@@ -52,7 +53,8 @@ function usePreferStill() {
 /* ------------------------------------------------------------ background */
 function HeroMedia({ hero, paused, onLive }: { hero: HeroSettings | undefined; paused: boolean; onLive: (live: boolean) => void }) {
   const preferStill = usePreferStill()
-  const publicCopy = !!useStore().snapshotAt
+  // outside Claude (GitHub Pages, the app) the asset store is not there
+  const publicCopy = standalonePage()
   const videos = sources(blobUrl(hero?.videoId), SITE_VIDEO, publicCopy)
   const posters = sources(blobUrl(hero?.posterId), SITE_POSTER, publicCopy)
   const [videoTry, setVideoTry] = useState(0)

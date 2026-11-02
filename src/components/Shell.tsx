@@ -180,7 +180,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Chevrons className="h-4 w-5 text-gold" />
         </div>
         <p className="mt-3 text-[14px] text-muted-foreground">
-          إدارة التواصل المؤسسي · شركة الأندلس التعليمية. بيانات المؤشرات منقولة من ملفات Google Sheets المعتمدة ومحفوظة مشفّرة، والمنصة لا تعدّل تلك الملفات.
+          إدارة التواصل المؤسسي · شركة الأندلس التعليمية. بيانات المؤشرات منقولة من ملفات Google Sheets المعتمدة ولا يطّلع عليها إلا المسجّلون، والمنصة لا تعدّل تلك الملفات.
         </p>
       </footer>
     </div>
