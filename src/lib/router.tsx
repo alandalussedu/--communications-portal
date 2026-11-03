@@ -15,6 +15,7 @@ export type Route =
   | { page: "competitors" }
   | { page: "members" }
   | { page: "complaints" }
+  | { page: "csr"; tab?: string; id?: string }
 
 const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints"] as const
 
@@ -24,6 +25,7 @@ export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch",
 /** Only bare tokens survive in the artifact's address, so each page has one. */
 export function routeToken(r: Route): string {
   if (r.page === "remedial") return r.slug ? `remedial-${r.slug}` : "remedial"
+  if (r.page === "csr") return r.id ? `csr-i-${r.id}` : r.tab ? `csr-${r.tab}` : "csr"
   if (r.page === "library") return r.section ? `library-${r.section}` : "library"
   return r.page === "branch" ? `branch-${r.slug}` : r.page
 }
@@ -33,6 +35,9 @@ function parse(hash: string): Route {
   if (t.startsWith("branch-") && t.length > 7) return { page: "branch", slug: t.slice(7) }
   if (t.startsWith("remedial-") && t.length > 9) return { page: "remedial", slug: t.slice(9) }
   if (t.startsWith("library-") && t.length > 8) return { page: "library", section: t.slice(8) }
+  if (t.startsWith("csr-i-") && t.length > 6) return { page: "csr", tab: "initiatives", id: t.slice(6) }
+  if (t.startsWith("csr-") && t.length > 4) return { page: "csr", tab: t.slice(4) }
+  if (t === "csr") return { page: "csr" }
   if ((TOKENS as readonly string[]).includes(t)) return { page: t as (typeof TOKENS)[number] } as Route
   return { page: "overview" }
 }

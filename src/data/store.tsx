@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -71,10 +71,12 @@ export type Data = {
   competitors: Competitor[]
   competitorsMeta: CompetitorsMeta | null
   complaintReports: ComplaintReport[]
+  csrInitiatives: CsrInitiative[]
+  csrPartners: CsrPartner[]
 }
 
-const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [] }
-const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports"]
+const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [] }
+const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners"]
 const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Record<CollectionName, boolean>
 
 /**
@@ -82,7 +84,7 @@ const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Re
  * (`{ enc }`) and only become readable after the vault is opened. A document
  * still in plain form (before the move to encryption) passes through as is.
  */
-export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports"]
+export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners"]
 const PROTECTED_SET = new Set<CollectionName>(PROTECTED)
 
 export type VaultStatus = "loading" | "none" | "locked" | "unlocked" | "unsupported"
@@ -125,6 +127,10 @@ type Store = {
   /** Saves uploaded complaint reports (and each original file) in one go, replacing any for the same branch and month. */
   saveComplaintReports(items: { report: ComplaintReport; file: { name: string; type: string; b64: string } }[]): Promise<boolean>
   deleteComplaintReport(id: string): Promise<boolean>
+  saveCsrInitiative(i: CsrInitiative, ok?: string): Promise<boolean>
+  deleteCsrInitiative(id: string): Promise<boolean>
+  saveCsrPartner(p: CsrPartner, ok?: string): Promise<boolean>
+  deleteCsrPartner(id: string): Promise<boolean>
   vault: Vault
   member: Member
 }
@@ -531,6 +537,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }, items.length === 1 ? "حُفظ تقرير الشكاوى" : `حُفظت ${items.length} تقارير شكاوى`),
     [write, putProtected],
   )
+  const saveCsrInitiative = useCallback(
+    (i: CsrInitiative, ok?: string) =>
+      write(async (db) => {
+        const { id, ...body } = i
+        await putProtected(db, "csrInitiatives", id, { ...body, updatedAt: new Date().toISOString() } as Record<string, unknown>)
+      }, ok ?? `حُفظت مبادرة «${i.name}»`),
+    [write, putProtected],
+  )
+  const deleteCsrInitiative = useCallback((id: string) => write((db) => db.doc(`csrInitiatives/${id}`).delete(), "حُذفت المبادرة"), [write])
+  const saveCsrPartner = useCallback(
+    (p: CsrPartner, ok?: string) =>
+      write(async (db) => {
+        const { id, ...body } = p
+        await putProtected(db, "csrPartners", id, { ...body, updatedAt: new Date().toISOString() } as Record<string, unknown>)
+      }, ok ?? `حُفظت شراكة «${p.name}»`),
+    [write, putProtected],
+  )
+  const deleteCsrPartner = useCallback((id: string) => write((db) => db.doc(`csrPartners/${id}`).delete(), "حُذفت الشراكة"), [write])
   const deleteComplaintReport = useCallback(
     (id: string) =>
       write(async (db) => {
@@ -667,10 +691,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteEvent,
       saveComplaintReports,
       deleteComplaintReport,
+      saveCsrInitiative,
+      deleteCsrInitiative,
+      saveCsrPartner,
+      deleteCsrPartner,
       vault,
       member,
     }),
-    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, vault, member],
+    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, saveCsrInitiative, deleteCsrInitiative, saveCsrPartner, deleteCsrPartner, vault, member],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

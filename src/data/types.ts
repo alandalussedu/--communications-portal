@@ -199,7 +199,7 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners"
 
 /* ------------------------------------------------------------ monthly complaint reports (uploaded Word files) */
 /** One piece of the report, in the order it appears in the Word file. Nothing is computed or added. */
@@ -405,4 +405,67 @@ export type CompetitorsMeta = {
   baselineId: string
   columns: Record<string, string>
   notes: string[]
+}
+
+/* ------------------------------------------------------------ community responsibility (دليل المسؤولية المجتمعية للفروع) */
+export type CsrTrack = "edu" | "val"
+/** The five evidence items of the guide. `partner` is complete when the initiative has no partner. */
+export type CsrEvidence = { photos: boolean; report: boolean; count: boolean; proof: boolean; partner: boolean }
+/** Entered and approved by the management team only. Counting is their decision; the platform warns, never decides. */
+export type CsrInitiative = {
+  id: string
+  /** academic year, e.g. "2026/2027" */
+  year: string
+  branch: string
+  track: CsrTrack
+  name: string
+  audience: string
+  plannedDate: string | null
+  /** condition 1: in the approved annual plan */
+  inPlan: boolean
+  /** condition 2: the beneficiaries are from outside the school's students and staff */
+  external: boolean
+  /** condition 4: no fee at all */
+  free: boolean
+  planApproved: boolean
+  planApprovedAt?: string | null
+  planApprovedBy?: string | null
+  partnerName: string
+  charity: boolean
+  status: "planned" | "done"
+  executedDate: string | null
+  beneficiaries: number | null
+  countMethod: string
+  students: number | null
+  staff: number | null
+  hours: number | null
+  cost: number | null
+  evidenceDate: string | null
+  evidenceLink: string
+  ev: CsrEvidence
+  /** the management decision on counting: null = not decided yet */
+  decision: "counted" | "rejected" | null
+  decidedAt?: string | null
+  decidedBy?: string | null
+  /** the evidence was late (over two weeks) when the decision was taken */
+  decidedLate?: boolean
+  notes: string
+  createdAt: string
+  updatedAt: string
+}
+export type CsrPartnerStage = "opp" | "contact" | "mou" | "deal"
+export type CsrPartner = {
+  id: string
+  name: string
+  org: string
+  branch: string | null
+  track: CsrTrack | null
+  stage: CsrPartnerStage
+  /** 0 = not rated, else 1..5 set by the management team */
+  quality: number
+  approved: boolean
+  contact: string
+  note: string
+  createdAt: string
+  updatedAt: string
 }

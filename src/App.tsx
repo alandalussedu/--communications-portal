@@ -17,6 +17,7 @@ import { RemedialPage } from "@/pages/RemedialPage"
 import { CompetitorsPage } from "@/pages/CompetitorsPage"
 import { CalendarPage } from "@/pages/CalendarPage"
 import { MembersPage } from "@/pages/MembersPage"
+import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
 
@@ -31,6 +32,8 @@ function Pages() {
       return <CalendarPage key={nonce} />
     case "overview":
       return <HomePage key={nonce} />
+    case "csr":
+      return <CsrPage key="csr" tab={route.tab} id={route.id} />
     case "members":
       return <MembersPage key={nonce} />
     default:

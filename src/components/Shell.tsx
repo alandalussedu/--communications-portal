@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { useMemo, type ReactNode as RN } from "react"
-import { BarChart3, CalendarDays, FolderOpen, House, Loader2, Lock, LockOpen, Megaphone, UserRound } from "lucide-react"
+import { BarChart3, CalendarDays, FolderOpen, HandHeart, House, Loader2, Lock, LockOpen, Megaphone, UserRound } from "lucide-react"
 import { buildAlerts, isHandled } from "@/data/insights"
 import { cn } from "@/lib/utils"
 import { LOCKED_PAGES, useRouter, type Route } from "@/lib/router"
@@ -19,6 +19,7 @@ const NAV: { page: Route["page"]; label: string; short: string; icon: typeof Hou
   { page: "library", label: "المكتبة", short: "المكتبة", icon: FolderOpen },
   { page: "calendar", label: "رحلة التواصل", short: "الرحلة", icon: CalendarDays },
   { page: "social", label: "التواصل الاجتماعي", short: "التواصل", icon: Megaphone },
+  { page: "csr", label: "المسؤولية المجتمعية", short: "المسؤولية", icon: HandHeart },
   { page: "indicators", label: "الأداء والتطوير", short: "الأداء", icon: BarChart3, also: LOCKED_PAGES, locked: true },
 ]
 
@@ -143,7 +144,7 @@ export function Shell({ children }: { children: ReactNode }) {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="أقسام المنصة"
       >
-        <ul className="mx-auto grid max-w-[560px] grid-cols-5">
+        <ul className="mx-auto grid max-w-[640px] grid-cols-6">
           {NAV.map((n) => {
             const active = route.page === n.page || n.also?.includes(route.page)
             const Icon = n.icon
@@ -154,9 +155,9 @@ export function Shell({ children }: { children: ReactNode }) {
                   onClick={() => go({ page: n.page } as Route)}
                   aria-current={active ? "page" : undefined}
                   aria-label={n.label}
-                  className={cn("relative flex h-16 w-full flex-col items-center justify-center gap-1 text-[12px] transition-colors", active ? "font-bold text-primary" : "text-muted-foreground")}
+                  className={cn("relative flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] transition-colors min-[400px]:text-[12px]", active ? "font-bold text-primary" : "text-muted-foreground")}
                 >
-                  <span className={cn("relative inline-flex h-8 w-14 items-center justify-center rounded-full transition-colors", active && "bg-primary/10")}>
+                  <span className={cn("relative inline-flex h-8 w-12 items-center justify-center rounded-full transition-colors", active && "bg-primary/10")}>
                     <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
                     {badge[n.page] && <span className="absolute -end-2 -top-1">{badge[n.page]}</span>}
                   </span>
