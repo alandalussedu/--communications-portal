@@ -14,11 +14,12 @@ export type Route =
   | { page: "remedial"; slug?: string }
   | { page: "competitors" }
   | { page: "members" }
+  | { page: "complaints" }
 
-const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members"] as const
+const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints"] as const
 
 /** Pages behind the password (the «المؤشرات» tab and everything under it). */
-export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "builder", "alerts", "sources", "competitors"]
+export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "complaints", "builder", "alerts", "sources", "competitors"]
 
 /** Only bare tokens survive in the artifact's address, so each page has one. */
 export function routeToken(r: Route): string {

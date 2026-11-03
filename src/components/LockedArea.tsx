@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react"
-import { BarChart3, Bell, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
+import { BarChart3, Bell, MessageSquareWarning, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
 import { useStore } from "@/data/store"
 import { buildAlerts, isHandled } from "@/data/insights"
 import { useRouter, type Route } from "@/lib/router"
@@ -13,6 +13,7 @@ const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route
   { page: "indicators", label: "ملخص الفروع", icon: LayoutDashboard },
   { page: "reports", label: "مقارنة الفروع", icon: BarChart3, also: ["branch"] },
   { page: "remedial", label: "الخطط العلاجية", icon: ClipboardList },
+  { page: "complaints", label: "الشكاوى", icon: MessageSquareWarning },
   { page: "competitors", label: "دراسة المنافسين", icon: Binoculars },
   { page: "alerts", label: "التنبيهات", icon: Bell },
   { page: "builder", label: "التقارير التنفيذية", icon: FileBarChart2 },

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { AlertState, Branch, CalendarEvent, CollectionName, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -70,10 +70,11 @@ export type Data = {
   events: CalendarEvent[]
   competitors: Competitor[]
   competitorsMeta: CompetitorsMeta | null
+  complaintReports: ComplaintReport[]
 }
 
-const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null }
-const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta"]
+const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [] }
+const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports"]
 const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Record<CollectionName, boolean>
 
 /**
@@ -81,7 +82,7 @@ const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Re
  * (`{ enc }`) and only become readable after the vault is opened. A document
  * still in plain form (before the move to encryption) passes through as is.
  */
-export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta"]
+export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports"]
 const PROTECTED_SET = new Set<CollectionName>(PROTECTED)
 
 export type VaultStatus = "loading" | "none" | "locked" | "unlocked" | "unsupported"
@@ -121,6 +122,9 @@ type Store = {
   saveFileSections(ids: string[], section: FileItem["section"]): Promise<boolean>
   saveEvent(ev: CalendarEvent): Promise<boolean>
   deleteEvent(id: string): Promise<boolean>
+  /** Saves uploaded complaint reports (and each original file) in one go, replacing any for the same branch and month. */
+  saveComplaintReports(items: { report: ComplaintReport; file: { name: string; type: string; b64: string } }[]): Promise<boolean>
+  deleteComplaintReport(id: string): Promise<boolean>
   vault: Vault
   member: Member
 }
@@ -516,6 +520,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
   const deleteEvent = useCallback((id: string) => write((db) => db.doc(`events/${id}`).delete(), "حُذف الحدث من رحلة التواصل"), [write])
 
+  const saveComplaintReports = useCallback(
+    (items: { report: ComplaintReport; file: { name: string; type: string; b64: string } }[]) =>
+      write(async (db) => {
+        for (const { report, file } of items) {
+          const { id, ...body } = report
+          await db.doc(`complaintFiles/${id}`).set({ name: file.name, type: file.type, b64: file.b64 })
+          await putProtected(db, "complaintReports", id, body as Record<string, unknown>)
+        }
+      }, items.length === 1 ? "حُفظ تقرير الشكاوى" : `حُفظت ${items.length} تقارير شكاوى`),
+    [write, putProtected],
+  )
+  const deleteComplaintReport = useCallback(
+    (id: string) =>
+      write(async (db) => {
+        await db.doc(`complaintReports/${id}`).delete()
+        await db.doc(`complaintFiles/${id}`).delete()
+      }, "حُذف تقرير الشكاوى"),
+    [write],
+  )
+
   /* ---------------------------------------------------------------- vault */
   const unlock = useCallback(
     async (password: string) => {
@@ -641,10 +665,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveFileSections,
       saveEvent,
       deleteEvent,
+      saveComplaintReports,
+      deleteComplaintReport,
       vault,
       member,
     }),
-    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, vault, member],
+    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, vault, member],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

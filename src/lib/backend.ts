@@ -239,3 +239,12 @@ export function onSignInChange(fn: () => void): () => void {
   })
   return () => data.subscription.unsubscribe()
 }
+
+/** The original Word file of a complaint report (members only; the database rules check). */
+export async function readComplaintFile(id: string): Promise<{ name: string; type: string; b64: string } | null> {
+  const sb = supabase()
+  if (!sb) return null
+  const { data, error } = await sb.from("docs").select("data").eq("collection", "complaintFiles").eq("id", id).maybeSingle()
+  if (error || !data) return null
+  return data.data as { name: string; type: string; b64: string }
+}

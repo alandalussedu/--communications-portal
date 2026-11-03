@@ -199,7 +199,23 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports"
+
+/* ------------------------------------------------------------ monthly complaint reports (uploaded Word files) */
+/** One piece of the report, in the order it appears in the Word file. Nothing is computed or added. */
+export type ComplaintBlock = { t: "p"; style: "title" | "h1" | "h2" | "p"; text: string } | { t: "table"; rows: string[][] }
+/** id = `${branch}__${month}`. The original file is kept in the collection complaintFiles under the same id. */
+export type ComplaintReport = {
+  id: string
+  branch: string
+  /** YYYY-MM */
+  month: string
+  title: string
+  fileName: string
+  fileSize: number
+  blocks: ComplaintBlock[]
+  uploadedAt: string
+}
 
 /* ------------------------------------------------------------ remedial plans (read from the branch Google Sheets) */
 export type RemedialStatus = "done" | "not-done" | "no-plan" | "no-checkbox"

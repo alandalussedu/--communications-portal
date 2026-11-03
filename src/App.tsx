@@ -17,6 +17,7 @@ import { RemedialPage } from "@/pages/RemedialPage"
 import { CompetitorsPage } from "@/pages/CompetitorsPage"
 import { CalendarPage } from "@/pages/CalendarPage"
 import { MembersPage } from "@/pages/MembersPage"
+import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
 
 function Pages() {
@@ -47,6 +48,8 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
       return <SourcesPage key={nonce} />
     case "remedial":
       return <RemedialPage key={nonce} slug={route.slug} />
+    case "complaints":
+      return <ComplaintsPage key={nonce} />
     case "competitors":
       return <CompetitorsPage key={nonce} />
     case "alerts":

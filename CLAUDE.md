@@ -15,6 +15,7 @@
 - **الدخول:** برقم الجوال وكلمة المرور. الحساب في Supabase Auth بعنوان داخلي `m9665XXXXXXXX@members.andalus.invalid`، ولا تُرسل أي رسائل بريد. كلمة المرور المؤقتة تُغيَّر إجباريًا عند أول دخول.
 - **إدارة المستخدمين:** صفحة `#members` في المنصة، تستدعي دالة الخادم `supabase/functions/admin-members` (لا يقبلها إلا مدير نشط).
 - `src/lib/backend.ts` طبقة Supabase بنفس واجهة قاعدة Claude (`use("db")`, `use("user")`)، فالصفحات و`src/data/store.tsx` لا تعرف الفرق. داخل Claude تعمل المنصة على قاعدة Claude القديمة كما كانت.
+- **«الشكاوى»** (`#complaints`, `src/pages/ComplaintsPage.tsx`): تقرير شكاوى شهري لكل فرع من ملف Word يرفعه المحرر، يُعرض كما في الملف حرفيًا وبترتيبه (لا مجاميع ولا رسوم ولا تصنيفات). `src/lib/docx.ts` يقرأ الملف في المتصفح. المحتوى في المجموعة المحمية `complaintReports` (المعرّف `<slug>__<YYYY-MM>`) والملف الأصلي في `complaintFiles` بالمعرّف نفسه. الفرع بلا ملف في الشهر = «لا توجد شكاوى». «الموهوبين» في عناوين الملفات = `shatee-gifted` (اعتمده مدير المنصة).
 - `src/config.ts` رابط المشروع والمفتاح العام (publishable)؛ كلاهما عام بطبيعته.
 - `docs/` الموقع المنشور (ناتج البناء + `public-data.json` الاحتياطي + `hero.mp4`/`hero.jpg`).
 - `tools/`: `make_public_data.py` (النسخة العامة)، `fetch_followers.mjs` (أعداد المتابعين من الواجهات الرسمية)، `migrate_to_supabase.mjs` و`make_seed_sql.py` (النقل الأولي، لم تعد لازمة)، `vault.mjs` (التشفير القديم).
