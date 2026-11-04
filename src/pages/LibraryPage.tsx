@@ -13,6 +13,7 @@ import { DataTable, type Column } from "@/components/DataTable"
 import { ChipGroup, CopyButton, EmptyState, OpenLink, PageHeader, Panel, Pill, SelectField, type Tone } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { FileForm, SynonymsForm } from "@/components/admin"
+import { Pill as SlidePill, useSlidingPill } from "@/lib/motion"
 
 type Kind = "all" | "folder" | "file" | "doc" | "waiting"
 type StatusFilter = "all" | FileStatus | "none"
@@ -30,6 +31,7 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
   const { go } = useRouter()
   const sec: SectionFilter = isSection(routeSection) ? routeSection : routeSection === "none" ? "none" : "all"
   const setSec = (v: SectionFilter) => go({ page: "library", section: v === "all" ? undefined : v })
+  const secPill = useSlidingPill<HTMLDivElement>(sec)
   const [classifying, setClassifying] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [savingSec, setSavingSec] = useState(false)
@@ -153,7 +155,8 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
         }
       />
       <Gate needs={["files", "settings"]} emptyWhen={files.length === 0} emptyTitle="المكتبة فارغة" emptyBody={canEdit ? "أضف أول ملف من زر «إضافة ملف»." : "لم تُضف ملفات إلى المكتبة بعد."}>
-        <div className="mb-4 flex gap-1.5 overflow-x-auto rounded-2xl border bg-card p-1.5 [scrollbar-width:none]" role="tablist" aria-label="أقسام المكتبة">
+        <div ref={secPill.ref} className="relative mb-4 flex gap-1.5 overflow-x-auto rounded-2xl border bg-card p-1.5 [scrollbar-width:none]" role="tablist" aria-label="أقسام المكتبة">
+          <SlidePill box={secPill.box} ready={secPill.ready} className="rounded-xl bg-primary" />
           {(
             [
               { value: "all", label: "كل الأقسام" },
@@ -169,7 +172,7 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
                 role="tab"
                 aria-selected={sec === o.value}
                 onClick={() => setSec(o.value)}
-                className={cn("inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-[16px]", sec === o.value ? "bg-primary font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+                className={cn("relative z-10 inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-[16px] transition-colors duration-300", sec === o.value ? "font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
               >
                 {o.label}
                 <span className={cn("num rounded-full px-1.5 text-[13px]", sec === o.value ? "bg-white/20" : "bg-muted")}>{formatNumber(n)}</span>

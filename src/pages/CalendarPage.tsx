@@ -757,6 +757,14 @@ export function UpcomingStrip({ className = "mt-5" }: { className?: string }) {
   const branches = useBranches()
   const today = todayYmd()
   const next = useMemo(() => expand(data.events, today, addDays(today, 60)).slice(0, 4), [data.events, today])
+  // the next two weeks at a glance: one cell per day, a dot per event type that day
+  const days = useMemo(() => {
+    const occ = expand(data.events, today, addDays(today, 13))
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = addDays(today, i)
+      return { d, types: [...new Set(occ.filter((o) => o.start <= d && o.end >= d).map((o) => o.ev.type))] }
+    })
+  }, [data.events, today])
   if (!loaded.events) return null
   return (
     <section className={cn("rise rounded-2xl border bg-card", className)} aria-labelledby="upcoming-title">
@@ -770,6 +778,29 @@ export function UpcomingStrip({ className = "mt-5" }: { className?: string }) {
           <ArrowLeft className="h-4 w-4" />
         </button>
       </div>
+      <ol className="flex gap-2 overflow-x-auto px-5 pb-1 pt-4 [scrollbar-width:none]" aria-label="الأسبوعان القادمان">
+        {days.map(({ d, types }, i) => (
+          <li key={d} className="shrink-0">
+            <button
+              type="button"
+              onClick={() => go({ page: "calendar" })}
+              aria-label={`${WEEKDAYS[weekday(d)]} ${Number(d.slice(8))}${types.length ? ` · ${types.map((t) => typeOf(t).label).join("، ")}` : ""}`}
+              className={cn(
+                "flex w-14 flex-col items-center rounded-xl border py-2 text-[12px] transition-colors hover:border-primary/40",
+                i === 0 ? "border-primary bg-secondary font-bold text-secondary-foreground" : types.length ? "bg-card" : "border-dashed text-muted-foreground",
+              )}
+            >
+              {WEEKDAYS[weekday(d)].replace(/^ال/, "")}
+              <span className="num text-[18px] font-extrabold leading-tight text-foreground">{Number(d.slice(8))}</span>
+              <span className="flex h-2 items-center gap-0.5" aria-hidden="true">
+                {types.slice(0, 3).map((t) => (
+                  <span key={t} className="h-1.5 w-1.5 rounded-full" style={{ background: `hsl(var(${typeOf(t).tone.ink}))` }} />
+                ))}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
       {next.length === 0 ? (
         <p className="px-5 py-4 text-[15px] text-muted-foreground">لا أحداث مسجّلة في الشهرين القادمين.</p>
       ) : (

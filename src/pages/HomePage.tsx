@@ -11,7 +11,7 @@ import { Panel, PanelHeader } from "@/components/common"
 import { FileRow, openLibrary } from "./OverviewPage"
 import { UpcomingStrip } from "./CalendarPage"
 import { HomeHero } from "@/components/HomeHero"
-import { QuickLinks } from "@/components/QuickLinks"
+import { QuickLinks, useQuickLinkItems } from "@/components/QuickLinks"
 
 const SECTION_ICON: Record<LibrarySection, typeof Palette> = { identity: Palette, guides: BookOpen, forms: FileSignature }
 const SECTION_TONE: Record<LibrarySection, string> = { identity: "bg-gold-soft text-gold-ink", guides: "bg-sky-soft text-sky-ink", forms: "bg-secondary text-secondary-foreground" }
@@ -32,6 +32,7 @@ export function HomePage() {
     [files],
   )
   const countOf = (s: LibrarySection) => files.filter((f) => f.section === s).length
+  const suggestions = useQuickLinkItems().slice(0, 4)
 
   return (
     <>
@@ -62,6 +63,17 @@ export function HomePage() {
               )}
             </div>
           </form>
+        {!q.trim() && suggestions.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-2" aria-label="عمليات بحث سريعة">
+            {suggestions.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => openLibrary(go, f.title)} className="inline-flex h-9 items-center rounded-full bg-white/[0.12] px-3.5 text-[14px] text-white ring-1 ring-white/25 backdrop-blur-sm transition-colors hover:bg-white/[0.22]">
+                  {f.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {q.trim() && (
           <div className="relative mt-3 max-w-3xl rounded-xl bg-card p-2 text-foreground shadow-sm">
             {hits.length === 0 ? (

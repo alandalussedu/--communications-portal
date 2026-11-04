@@ -11,11 +11,17 @@ const DEFAULT_IDS = ["f014", "f010", "f013", "f002"]
 const MAX = 6
 const usable = (f: FileItem) => !!f.url && f.status !== "مسودة" && f.status !== "مؤرشف"
 
-export function QuickLinks() {
-  const { data, canEdit, loaded } = useStore()
-  const [editing, setEditing] = useState(false)
+/** The chosen quick links, in order (also offered as search suggestions in the hero). */
+export function useQuickLinkItems() {
+  const { data } = useStore()
   const ids = data.settings?.quickLinks ?? DEFAULT_IDS
-  const items = useMemo(() => ids.map((id) => data.files.find((f) => f.id === id)).filter((f): f is FileItem => !!f && usable(f)), [ids, data.files])
+  return useMemo(() => ids.map((id) => data.files.find((f) => f.id === id)).filter((f): f is FileItem => !!f && usable(f)), [ids, data.files])
+}
+
+export function QuickLinks() {
+  const { canEdit, loaded } = useStore()
+  const [editing, setEditing] = useState(false)
+  const items = useQuickLinkItems()
   if (!loaded.files || !loaded.settings) return null
   if (!items.length && !canEdit) return null
   return (

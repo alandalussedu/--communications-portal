@@ -7,6 +7,7 @@ import { formatNumber } from "@/lib/format"
 import { Octagram } from "./common"
 import { Growth, PlatformBadge, Sparkline } from "./social"
 import { defaultSocialMonth } from "@/pages/SocialPage"
+import { CountUp } from "@/lib/motion"
 
 /** Home-page summary of the social tab: a navy "pulse" band with one tile per active account. */
 export function SocialPulse() {
@@ -83,7 +84,7 @@ export function SocialPulse() {
                   </span>
                 </span>
                 <span className="mt-3 flex items-end justify-between gap-2">
-                  <span className="num text-[24px] font-extrabold leading-none">{m.followers !== null ? formatNumber(m.followers) : <span className="text-[14px] font-normal text-white/60">لم يُسجّل</span>}</span>
+                  <span className="num text-[24px] font-extrabold leading-none">{m.followers !== null ? <CountUp value={m.followers} /> : <span className="text-[14px] font-normal text-white/60">لم يُسجّل</span>}</span>
                   <span className="rounded-full bg-white px-2 py-0.5 text-[13px]">
                     <Growth value={m.growth} className="text-[13px]" empty="—" />
                   </span>

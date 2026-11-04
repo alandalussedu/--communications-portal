@@ -7,6 +7,7 @@ import { passwordIssues } from "@/lib/vault"
 import { cn } from "@/lib/utils"
 import { Banner, Octagram, Panel, LoadingBlock } from "./common"
 import { LoginForm } from "./EditorLogin"
+import { Pill, useSlidingPill } from "@/lib/motion"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][] }[] = [
@@ -64,9 +65,11 @@ function SubNav() {
   const { data, vault, member } = useStore()
   const [changing, setChanging] = useState(false)
   const openAlerts = useMemo(() => (data.branches.length ? buildAlerts(data).filter((a) => !isHandled(a, data.alertState)).length : 0), [data])
+  const pill = useSlidingPill<HTMLUListElement>(route.page)
   return (
     <div className="mb-2 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-1.5">
-      <ul className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]" aria-label="صفحات المؤشرات">
+      <ul ref={pill.ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]" aria-label="صفحات المؤشرات">
+        <Pill box={pill.box} ready={pill.ready} className="rounded-xl bg-secondary" />
         {SUB.map((n) => {
           const active = route.page === n.page || n.also?.includes(route.page)
           const Icon = n.icon
@@ -77,8 +80,8 @@ function SubNav() {
                 onClick={() => go({ page: n.page } as Route)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-[15px] transition-colors",
-                  active ? "bg-secondary font-bold text-secondary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  "relative z-10 inline-flex h-10 items-center gap-2 rounded-xl px-3 text-[15px] transition-colors duration-300",
+                  active ? "font-bold text-secondary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />

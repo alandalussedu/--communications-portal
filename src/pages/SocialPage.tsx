@@ -154,11 +154,15 @@ export function SocialPage() {
                 {formatNumber(g.rows.length)} {g.rows.length > 10 ? "حسابًا" : g.rows.length > 2 ? "حسابات" : g.rows.length === 2 ? "حسابان" : "حساب"}
               </span>
             </div>
-            <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {g.rows.map(({ orig: a, m }) => (
-                <AccountCard key={a.id} a={a} m={m} idx={idx} month={month} onEdit={canEdit ? () => setEditing({ kind: "account", item: a }) : undefined} />
-              ))}
-            </ul>
+            {g.name === BRANCH_CHANNELS ? (
+              <ChannelBars rows={g.rows.map(({ orig, m }) => ({ a: orig, m }))} month={month} onEdit={canEdit ? (a) => setEditing({ kind: "account", item: a }) : undefined} />
+            ) : (
+              <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {g.rows.map(({ orig: a, m }) => (
+                  <AccountCard key={a.id} a={a} m={m} idx={idx} month={month} onEdit={canEdit ? () => setEditing({ kind: "account", item: a }) : undefined} />
+                ))}
+              </ul>
+            )}
           </section>
         ))}
 
@@ -241,6 +245,50 @@ function AccountCard({ a, m, idx, month, onEdit }: { a: SocialAccount; m: Return
       <Sparkline points={h} className="mt-3 h-10 w-full text-primary" />
       {a.handle && <p className="mt-2 truncate text-[13px] text-muted-foreground" dir="ltr">{a.handle}</p>}
     </li>
+  )
+}
+
+/** Branch WhatsApp channels ranked by members, one bar each, so the gaps between branches read at a glance. */
+function ChannelBars({ rows, month, onEdit }: { rows: { a: SocialAccount; m: ReturnType<typeof accountMonth> }[]; month: string; onEdit?: (a: SocialAccount) => void }) {
+  const { data } = useStore()
+  const branches = publicBranches(data)
+  const sorted = [...rows].sort((x, y) => (y.m.followers ?? -1) - (x.m.followers ?? -1) || x.a.name.localeCompare(y.a.name, "ar"))
+  const max = Math.max(1, ...rows.map((r) => r.m.followers ?? 0))
+  return (
+    <Panel className="mt-3">
+      <p className="border-b px-5 py-2.5 text-[13px] text-muted-foreground">الأعضاء · {monthLabel(month)}، مرتبة من الأكبر</p>
+      <ul className="divide-y">
+        {sorted.map(({ a, m }, i) => (
+          <li key={a.id} className={cn("grid grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)_auto] items-center gap-3 px-5 py-2.5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]", !a.active && "opacity-60")}>
+            <span className="min-w-0">
+              <span className="block truncate text-[15px] font-bold">{a.name}</span>
+              <span className="block truncate text-[12px] text-muted-foreground">{ownerLabel(a.owner, branches)}</span>
+            </span>
+            <span className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+              {m.followers !== null && (
+                <span className="grow-x block h-full rounded-full bg-gradient-to-l from-ok to-sky" style={{ width: `${(m.followers / max) * 100}%`, animationDelay: `${Math.min(i, 12) * 40}ms` }} />
+              )}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-end">
+                <span className="num block text-[16px] font-extrabold">{m.followers !== null ? formatNumber(m.followers) : <span className="text-[13px] font-normal text-muted-foreground">لم يُسجّل</span>}</span>
+                <Growth value={m.growth} className="text-[12px]" empty="" />
+              </span>
+              {a.url && (
+                <a href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent" aria-label={`فتح ${a.name}`}>
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+              {onEdit && (
+                <button type="button" onClick={() => onEdit(a)} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent" aria-label={`تعديل ${a.name}`}>
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }
 

@@ -6,6 +6,7 @@ import type { HeroSettings } from "@/data/types"
 import { cn } from "@/lib/utils"
 import { standalonePage } from "@/lib/runtime"
 import { Chevrons } from "./common"
+import { DrawnStar } from "@/lib/motion"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 export const HERO_TITLE = "عن ماذا تبحث اليوم؟"
@@ -99,7 +100,7 @@ function HeroMedia({ hero, paused, onLive }: { hero: HeroSettings | undefined; p
           decoding="async"
           onLoad={() => setPosterShown(true)}
           onError={() => setPosterTry((n) => n + 1)}
-          className={cn("absolute inset-0 h-full w-full object-cover transition-opacity duration-700", posterShown ? "opacity-100" : "opacity-0")}
+          className={cn("kenburns absolute inset-0 h-full w-full object-cover transition-opacity duration-700", posterShown ? "opacity-100" : "opacity-0")}
         />
       )}
       {playVideo && (
@@ -137,7 +138,8 @@ export function HomeHero({ children }: { children: ReactNode }) {
   return (
     <section className="hero-band rise relative mt-6 overflow-hidden rounded-2xl text-white">
       <HeroMedia hero={hero} paused={paused} onLive={setLive} />
-      <div className="relative px-4 py-4 sm:px-8 sm:py-6">
+      <DrawnStar className="pointer-events-none absolute -top-16 end-[-3.5rem] hidden h-72 w-72 text-gold/60 sm:block" />
+      <div className="relative flex min-h-[15rem] flex-col justify-end px-4 py-5 sm:min-h-[17.5rem] sm:px-8 sm:py-7">
         <div className="min-w-0 max-w-3xl">
           <p className="flex items-center gap-2 text-[14px] text-white/85">
             <Chevrons className="h-2.5 w-3 text-gold" />

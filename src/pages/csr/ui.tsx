@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Check, Minus, Star, X } from "lucide-react"
 import type { CsrInitiative } from "@/data/types"
 import { STAGES, isCounted, stageOf } from "@/data/csr"
@@ -122,3 +122,22 @@ export const btn = {
 }
 
 export const counted = (list: CsrInitiative[]) => list.filter(isCounted)
+
+/** A branch score out of 100 as a gold ring that fills once. */
+export function ScoreRing({ value, size = 52 }: { value: number; size?: number }) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setShown(value))
+    return () => cancelAnimationFrame(t)
+  }, [value])
+  const r = 15.5, c = 2 * Math.PI * r
+  return (
+    <span className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} role="img" aria-label={`${fmt(value)} من 100`}>
+      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden="true">
+        <circle cx="18" cy="18" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="3.2" />
+        <circle cx="18" cy="18" r={r} fill="none" stroke="hsl(var(--gold))" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(100, shown) / 100)} className="transition-[stroke-dashoffset] duration-1000 ease-out motion-reduce:transition-none" style={{ opacity: value > 0 ? 1 : 0 }} />
+      </svg>
+      <span className="num relative text-[14px] font-extrabold">{fmt(value)}</span>
+    </span>
+  )
+}

@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils"
 import { Gate } from "@/components/Gate"
 import { CopyButton, EmptyState, LoadingBlock, Octagram, PageHeader, Panel, PanelHeader } from "@/components/common"
 import { LoginForm } from "@/components/EditorLogin"
-import { Kpi, ScoreCell, StageChip, btn, fmt } from "./csr/ui"
+import { Pill, useSlidingPill } from "@/lib/motion"
+import { Kpi, ScoreCell, ScoreRing, StageChip, btn, fmt } from "./csr/ui"
 import { InitiativeDetail, InitiativeSheet, InitiativesTab } from "./csr/Initiatives"
 import { PartnersTab } from "./csr/Partners"
 
@@ -39,6 +40,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
   const [branchFilter, setBranchFilter] = useState("")
   const [editing, setEditing] = useState<CsrInitiative | "new" | null>(null)
   const setTab = (k: string) => go({ page: "csr", tab: k })
+  const pill = useSlidingPill<HTMLUListElement>(tab)
   const openInit = (i: CsrInitiative) => go({ page: "csr", tab: "initiatives", id: i.id })
 
   const header = (
@@ -86,7 +88,8 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
     <>
       {header}
       <nav className="mb-5 rounded-2xl border bg-card p-1.5" aria-label="أقسام المسؤولية المجتمعية">
-        <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
+        <ul ref={pill.ref} className="relative flex gap-1 overflow-x-auto [scrollbar-width:none]">
+          <Pill box={pill.box} ready={pill.ready} className="rounded-xl bg-secondary" />
           {TABS.map((t) => {
             const Icon = t.icon
             const on = t.key === tab
@@ -97,8 +100,8 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
                   onClick={() => setTab(t.key)}
                   aria-current={on ? "page" : undefined}
                   className={cn(
-                    "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-[15px] transition-colors",
-                    on ? "bg-secondary font-bold text-secondary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    "relative z-10 inline-flex h-10 items-center gap-2 rounded-xl px-3 text-[15px] transition-colors duration-300",
+                    on ? "font-bold text-secondary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
@@ -252,7 +255,7 @@ function ScoreTable({ rows, onBranch }: { rows: ReturnType<typeof branchRows>; o
             <th scope="col" className="px-2 py-2.5 text-start font-medium">الالتزام</th>
             <th scope="col" className="px-2 py-2.5 text-start font-medium">التوثيق</th>
             <th scope="col" className="px-2 py-2.5 text-start font-medium">الوصول</th>
-            <th scope="col" className="px-4 py-2.5 text-start font-medium">الدرجة</th>
+            <th scope="col" className="px-4 py-2.5 text-start font-medium">الدرجة /100</th>
           </tr>
         </thead>
         <tbody>
@@ -266,9 +269,8 @@ function ScoreTable({ rows, onBranch }: { rows: ReturnType<typeof branchRows>; o
               <td className="px-2 py-2.5"><ScoreCell v={r.score.compliance} of={40} /></td>
               <td className="px-2 py-2.5"><ScoreCell v={r.score.docs} of={35} /></td>
               <td className="px-2 py-2.5"><ScoreCell v={r.score.access} of={25} /></td>
-              <td className="px-4 py-2.5">
-                <span className="num text-[18px] font-extrabold">{fmt(r.score.total)}</span>
-                <span className="num text-[13px] text-muted-foreground"> /100</span>
+              <td className="px-4 py-2">
+                <ScoreRing value={r.score.total} size={46} />
               </td>
             </tr>
           ))}
@@ -344,10 +346,7 @@ function BranchesTab({ onBranch }: { onBranch: (slug: string) => void }) {
                 </p>
                 <p className="text-[19px] font-bold">{r.branch.name}</p>
               </div>
-              <p className="num shrink-0 text-[28px] font-extrabold leading-none">
-                {fmt(r.score.total)}
-                <span className="text-[13px] font-medium text-muted-foreground">/100</span>
-              </p>
+              <ScoreRing value={r.score.total} size={60} />
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[13px]">
               <span className="inline-flex items-center gap-1.5">تعليمي <StageChip i={r.eduLead} /></span>
