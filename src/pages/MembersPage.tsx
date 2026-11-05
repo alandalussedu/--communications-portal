@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Check, Copy, KeyRound, Loader2, Plus, Search, UserCheck, UserX } from "lucide-react"
+import { Bell, Check, Copy, KeyRound, Loader2, Plus, Search, UserCheck, UserX } from "lucide-react"
 import { toast } from "sonner"
 import { useStore, type MemberRole } from "@/data/store"
-import { adminMembers, normalizePhone, useSession, type MemberRow } from "@/lib/backend"
+import { adminMembers, normalizePhone, sendPush, useSession, type MemberRow, type PushReq } from "@/lib/backend"
 import { formatDate, formatTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EmptyState, LoadingBlock, PageHeader, Panel, Pill } from "@/components/common"
@@ -28,6 +28,7 @@ export function MembersPage() {
   const [adding, setAdding] = useState(false)
   const [secret, setSecret] = useState<{ name: string; phone: string; password: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [pushing, setPushing] = useState(false)
 
   const load = useCallback(async () => {
     const res = await adminMembers<MemberRow[]>({ action: "list" })
@@ -77,10 +78,16 @@ export function MembersPage() {
         title="إدارة المستخدمين"
         description="أضف مسؤولي التواصل وزملاءك في الإدارة، وأعد تعيين كلمات المرور، وأوقف الحسابات. كل حساب جديد يدخل بكلمة مرور مؤقتة ويُطلب منه تغييرها."
         actions={
-          <button type="button" onClick={() => setAdding(true)} className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            إضافة مستخدم
-          </button>
+          <>
+            <button type="button" onClick={() => setPushing(true)} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-5 text-[15px] font-bold hover:bg-accent">
+              <Bell className="h-4 w-4" aria-hidden="true" />
+              إرسال إشعار
+            </button>
+            <button type="button" onClick={() => setAdding(true)} className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              إضافة مستخدم
+            </button>
+          </>
         }
       />
       <Panel>
@@ -166,6 +173,15 @@ export function MembersPage() {
       </Sheet>
 
       <SecretDialog secret={secret} onClose={() => setSecret(null)} />
+      <Sheet open={pushing} onOpenChange={setPushing}>
+        <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg" dir="rtl">
+          <SheetHeader className="pe-8 text-start">
+            <SheetTitle className="text-start text-[22px] font-bold">إرسال إشعار</SheetTitle>
+            <SheetDescription className="text-start text-[15px]">يصل إلى أجهزة من ثبّت تطبيق البوابة وسمح بالإشعارات.</SheetDescription>
+          </SheetHeader>
+          <PushForm onDone={() => setPushing(false)} />
+        </SheetContent>
+      </Sheet>
     </>
   )
 }
@@ -257,5 +273,74 @@ function SecretDialog({ secret, onClose }: { secret: { name: string; phone: stri
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+const AUDIENCES: { value: PushReq["audience"]; label: string }[] = [
+  { value: "all", label: "الجميع" },
+  { value: "officers", label: "مسؤولو التواصل" },
+  { value: "team", label: "فريق الإدارة" },
+]
+const ROUTES: { value: string; label: string }[] = [
+  { value: "", label: "الصفحة الرئيسية" },
+  { value: "indicators", label: "الأداء والتطوير" },
+  { value: "remedial", label: "الخطط العلاجية" },
+  { value: "calendar", label: "رحلة التواصل" },
+  { value: "library", label: "المكتبة" },
+  { value: "social", label: "التواصل الاجتماعي" },
+  { value: "csr", label: "المسؤولية المجتمعية" },
+]
+
+function PushForm({ onDone }: { onDone: () => void }) {
+  const [title, setTitle] = useState("")
+  const [body, setBody] = useState("")
+  const [audience, setAudience] = useState<PushReq["audience"]>("all")
+  const [route, setRoute] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <form
+      className="mt-5 space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setError(null)
+        if (!title.trim() || !body.trim()) return setError("اكتب عنوان الإشعار ونصه.")
+        setBusy(true)
+        const res = await sendPush({ title: title.trim(), body: body.trim(), audience, route: route || undefined })
+        setBusy(false)
+        if (res.error) return setError(res.error)
+        const r = res.data!
+        if (!r.devices) toast.message("لم يُرسل شيء", { description: "لا توجد أجهزة مسجلة لهؤلاء المستلمين بعد. تظهر الأجهزة بعد تثبيت التطبيق والسماح بالإشعارات." })
+        else toast.success(`أُرسل إلى ${r.sent} جهاز`, { description: `${r.reached} من ${r.members} مستخدمًا لديهم التطبيق${r.failed ? ` · تعذّر ${r.failed}` : ""}` })
+        onDone()
+      }}
+    >
+      <div>
+        <label htmlFor="push-title" className="mb-1 block text-[15px] font-medium">العنوان</label>
+        <input id="push-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="مثال: تحديث الخطط العلاجية" />
+      </div>
+      <div>
+        <label htmlFor="push-body" className="mb-1 block text-[15px] font-medium">النص</label>
+        <textarea id="push-body" value={body} maxLength={240} rows={3} onChange={(e) => setBody(e.target.value)} className="w-full rounded-md border border-input bg-card px-3 py-2 text-[16px] outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30" />
+        <p className="num mt-1 text-[12px] text-muted-foreground">{body.length}/240</p>
+      </div>
+      <div>
+        <label htmlFor="push-aud" className="mb-1 block text-[15px] font-medium">المستلمون</label>
+        <select id="push-aud" value={audience} onChange={(e) => setAudience(e.target.value as PushReq["audience"])} className={inputCls}>
+          {AUDIENCES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="push-route" className="mb-1 block text-[15px] font-medium">عند فتح الإشعار</label>
+        <select id="push-route" value={route} onChange={(e) => setRoute(e.target.value)} className={inputCls}>
+          {ROUTES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+      </div>
+      {error && <p className="text-[14px] text-bad" role="alert">{error}</p>}
+      <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-[16px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Bell className="h-4 w-4" aria-hidden="true" />}
+        إرسال
+      </button>
+    </form>
   )
 }

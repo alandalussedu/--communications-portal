@@ -20,6 +20,26 @@ import { MembersPage } from "@/pages/MembersPage"
 import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
+import { useEffect } from "react"
+import { useStore } from "@/data/store"
+import { useSession } from "@/lib/backend"
+import { enablePush, startNative } from "@/lib/native"
+
+/** In the iOS app: status bar, notification taps, and this device's push token once a member is signed in. */
+function NativeBridge() {
+  const { member } = useStore()
+  const session = useSession()
+  useEffect(() => {
+    startNative((hash) => {
+      window.location.hash = hash
+    })
+  }, [])
+  const uid = session?.user.id
+  useEffect(() => {
+    if (uid && member.role && !member.mustChange) void enablePush(uid)
+  }, [uid, member.role, member.mustChange])
+  return null
+}
 
 function Pages() {
   const { route, nonce } = useRouter()
@@ -73,6 +93,7 @@ export default function App() {
             <Pages />
           </Shell>
           <ForcePasswordChange />
+          <NativeBridge />
           <Toaster position="bottom-left" richColors={false} closeButton mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)" }} />
         </DataProvider>
       </RouterProvider>

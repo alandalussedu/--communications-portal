@@ -13,6 +13,7 @@ import { DataTable, type Column } from "@/components/DataTable"
 import { ChipGroup, CopyButton, EmptyState, OpenLink, PageHeader, Panel, Pill, SelectField, type Tone } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { FileForm, SynonymsForm } from "@/components/admin"
+import { ShareButton } from "@/components/ShareButton"
 import { Pill as SlidePill, useSlidingPill } from "@/lib/motion"
 
 type Kind = "all" | "folder" | "file" | "doc" | "waiting"
@@ -494,7 +495,10 @@ function FileCard({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdi
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t pt-3">
         {ready ? (
           <>
-            <CopyButton text={f.url!} />
+            <span className="flex items-center">
+              <CopyButton text={f.url!} />
+              <ShareButton title={f.title} url={f.url!} />
+            </span>
             <div className="flex gap-1.5">
               {dl && (
                 <a href={dl.href} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-[15px] hover:bg-accent">
@@ -552,6 +556,7 @@ function FileTable({ rows, canEdit, onEdit }: { rows: FileItem[]; canEdit: boole
                 {dl.label}
               </a>
             )}
+            {f.url && <ShareButton title={f.title} url={f.url} className="w-8 justify-center px-0 [&>span]:sr-only" />}
             {f.url ? <OpenLink href={f.url} size="sm" variant="solid">فتح</OpenLink> : <Pill tone="warn">بانتظار الرابط</Pill>}
           </div>
         )

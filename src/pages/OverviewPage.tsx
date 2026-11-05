@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/format"
 import { FILE_KIND_LABEL, searchFiles } from "@/lib/search"
 import { usePersistent } from "@/lib/persist"
 import { cn } from "@/lib/utils"
+import { ShareButton } from "@/components/ShareButton"
 import { Gate } from "@/components/Gate"
 import { Legend } from "@/components/charts"
 import { compareRows } from "@/components/BranchComparison"
@@ -461,9 +462,12 @@ export function FileRow({ f }: { f: FileItem }) {
   return (
     <li>
       {f.url ? (
-        <a href={f.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent/60">
-          {inner}
-        </a>
+        <span className="flex items-center gap-1">
+          <a href={f.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent/60">
+            {inner}
+          </a>
+          <ShareButton title={f.title} url={f.url} className="h-9 w-9 shrink-0 justify-center px-0 [&>span]:sr-only" />
+        </span>
       ) : (
         <div className="flex items-center gap-3 px-2 py-2">{inner}</div>
       )}

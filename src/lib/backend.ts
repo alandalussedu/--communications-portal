@@ -183,7 +183,12 @@ export async function signIn(phoneInput: string, password: string): Promise<stri
   return "تعذّر تسجيل الدخول. تحقق من الاتصال ثم أعد المحاولة."
 }
 
+/** Work to do while the session is still valid, just before signing out (e.g. the app removes its push token). */
+const beforeSignOut: (() => Promise<void>)[] = []
+export const onBeforeSignOut = (fn: () => Promise<void>) => void beforeSignOut.push(fn)
+
 export async function signOut(): Promise<void> {
+  for (const fn of beforeSignOut) await fn().catch(() => {})
   await supabase()?.auth.signOut()
 }
 
@@ -225,6 +230,27 @@ export async function adminMembers<T = unknown>(req: AdminReq): Promise<{ data?:
     return { error: msg }
   }
   return { data: data as T }
+}
+
+export type PushReq = { title: string; body: string; audience: "all" | "team" | "officers"; route?: string }
+export type PushResult = { members: number; devices: number; reached: number; sent: number; failed: number; removed: number }
+
+/** Calls the send-push function (owners only; the function checks). */
+export async function sendPush(req: PushReq): Promise<{ data?: PushResult; error?: string }> {
+  const sb = supabase()
+  if (!sb) return { error: "قاعدة البيانات غير مهيأة." }
+  const { data, error } = await sb.functions.invoke("send-push", { body: req })
+  if (error) {
+    let msg = "تعذّر إرسال الإشعار. أعد المحاولة."
+    try {
+      const body = await (error as { context?: Response }).context?.json()
+      if (body?.error) msg = body.error
+    } catch {
+      /* the function is not deployed yet, or the network failed */
+    }
+    return { error: msg }
+  }
+  return { data: data as PushResult }
 }
 
 /** Calls `fn` whenever someone signs in or out (not on token refresh). */

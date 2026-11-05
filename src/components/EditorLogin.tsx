@@ -1,10 +1,11 @@
-import { useState } from "react"
-import { Eye, EyeOff, KeyRound, Loader2, LogOut, ShieldCheck, UserRound, UserRoundCheck, Users } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Eye, EyeOff, Fingerprint, KeyRound, Loader2, LogOut, ScanFace, ShieldCheck, UserRound, UserRoundCheck, Users } from "lucide-react"
 import { toast } from "sonner"
 import { backendConfigured, changeMyPassword, normalizePhone, signIn, signOut, useSession } from "@/lib/backend"
 import { useStore, type MemberRole } from "@/data/store"
 import { useRouter } from "@/lib/router"
 import { cn } from "@/lib/utils"
+import { biometricSaved, biometricSignIn, biometry, forgetBiometricLogin, saveBiometricLogin, updateBiometricPassword, type Biometry } from "@/lib/native"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 export const ROLE_LABEL: Record<MemberRole, string> = { viewer: "مسؤول تواصل", editor: "محرر", owner: "مدير المنصة" }
@@ -23,13 +24,50 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
   )
 }
 
+/** In the app: whether Face ID / Touch ID can be used and whether a sign-in is saved. Refreshes on `key`. */
+function useBiometry(key: unknown = 0) {
+  const [state, setState] = useState<Biometry & { saved: boolean }>({ available: false, label: "", saved: false })
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const b = await biometry()
+      const saved = b.available ? await biometricSaved() : false
+      if (live) setState({ ...b, saved })
+    })()
+    return () => {
+      live = false
+    }
+  }, [key])
+  return state
+}
+const BioIcon = ({ label, className }: { label: string; className?: string }) => (label === "بصمة الإصبع" ? <Fingerprint className={className} aria-hidden="true" /> : <ScanFace className={className} aria-hidden="true" />)
+
 /** Mobile number + password. Used in the header sheet and in place of the old shared password. */
 export function LoginForm({ onDone }: { onDone?: () => void }) {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const bio = useBiometry()
+  const bioLogin = async () => {
+    setBusy(true)
+    setError(null)
+    const err = await biometricSignIn()
+    setBusy(false)
+    if (err) return setError(err)
+    if (err === null) onDone?.()
+  }
   return (
+    <>
+    {bio.available && bio.saved && (
+      <div className="mb-5 space-y-3">
+        <button type="button" onClick={bioLogin} disabled={busy} className={primaryBtn}>
+          <BioIcon label={bio.label} className="h-5 w-5" />
+          الدخول ب{bio.label}
+        </button>
+        <p className="text-center text-[13px] text-muted-foreground">أو ادخل برقم الجوال وكلمة المرور</p>
+      </div>
+    )}
     <form
       className="space-y-4"
       onSubmit={async (e) => {
@@ -39,6 +77,14 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
         const err = await signIn(phone, password)
         setBusy(false)
         if (err) return setError(err)
+        // in the app: offer Face ID / Touch ID for next time
+        if (bio.available && !bio.saved) {
+          const p = phone, pw = password
+          toast(`ادخل في المرة القادمة ب${bio.label}؟`, {
+            duration: 12000,
+            action: { label: "تفعيل", onClick: () => void saveBiometricLogin(p, pw).then((ok) => (ok ? toast.success(`فُعّل الدخول ب${bio.label}`) : toast.error("تعذّر التفعيل"))) },
+          })
+        } else if (bio.saved) void updateBiometricPassword(phone, password)
         setPassword("")
         onDone?.()
       }}
@@ -58,6 +104,7 @@ export function LoginForm({ onDone }: { onDone?: () => void }) {
       </button>
       <p className="text-[13px] leading-relaxed text-muted-foreground">نسيت كلمة المرور أو لا تملك حسابًا؟ تواصل مع إدارة التواصل المؤسسي.</p>
     </form>
+    </>
   )
 }
 
@@ -84,6 +131,7 @@ export function ChangePasswordForm({ onDone, first = false }: { onDone?: () => v
         if (err) return setError(err)
         setP1("")
         setP2("")
+        if (myPhone) void updateBiometricPassword(myPhone, p1)
         toast.success(first ? "تم ضبط كلمة المرور. أهلًا بك" : "تغيّرت كلمة المرور")
         member.recheck()
         onDone?.()
@@ -141,6 +189,8 @@ export function EditorLogin({ onBand = false }: { onBand?: boolean }) {
   const { go } = useRouter()
   const [open, setOpen] = useState(false)
   const [changing, setChanging] = useState(false)
+  const [bioKey, setBioKey] = useState(0)
+  const bio = useBiometry(`${open}-${bioKey}`)
   if (!backendConfigured) return null
 
   const signedIn = !!session
@@ -189,6 +239,20 @@ export function EditorLogin({ onBand = false }: { onBand?: boolean }) {
                   <KeyRound className="h-4 w-4" aria-hidden="true" />
                   تغيير كلمة المرور
                 </button>
+                {bio.available && bio.saved && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await forgetBiometricLogin()
+                      setBioKey((k) => k + 1)
+                      toast.success(`أُوقف الدخول ب${bio.label} على هذا الجهاز`)
+                    }}
+                    className="inline-flex h-11 w-full items-center gap-2 rounded-xl border px-4 text-[15px] hover:bg-accent"
+                  >
+                    <BioIcon label={bio.label} className="h-4 w-4" />
+                    إيقاف الدخول ب{bio.label}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={async () => {
