@@ -6,12 +6,10 @@ import { Shell } from "@/components/Shell"
 import { IndicatorsHomePage } from "@/pages/OverviewPage"
 import { HomePage } from "@/pages/HomePage"
 import { LockedArea } from "@/components/LockedArea"
-import { ReportsPage } from "@/pages/ReportsPage"
 import { BranchPage } from "@/pages/BranchPage"
 import { LibraryPage } from "@/pages/LibraryPage"
 import { SourcesPage } from "@/pages/SourcesPage"
 import { BuilderPage } from "@/pages/BuilderPage"
-import { AlertsPage } from "@/pages/AlertsPage"
 import { SocialPage } from "@/pages/SocialPage"
 import { RemedialPage } from "@/pages/RemedialPage"
 import { CompetitorsPage } from "@/pages/CompetitorsPage"
@@ -63,8 +61,6 @@ function Pages() {
 
 function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number) {
   switch (route.page) {
-    case "reports":
-      return <ReportsPage key={nonce} />
     case "branch":
       return <BranchPage key={nonce} slug={route.slug} />
     case "sources":
@@ -75,8 +71,6 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
       return <ComplaintsPage key={nonce} />
     case "competitors":
       return <CompetitorsPage key={nonce} />
-    case "alerts":
-      return <AlertsPage key={nonce} />
     case "builder":
       return <BuilderPage key={nonce} />
     default:

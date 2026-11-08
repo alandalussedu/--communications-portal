@@ -1,7 +1,6 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react"
-import { BarChart3, Bell, MessageSquareWarning, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
+import { useState, type FormEvent, type ReactNode } from "react"
+import { MessageSquareWarning, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
 import { useStore } from "@/data/store"
-import { buildAlerts, isHandled } from "@/data/insights"
 import { useRouter, type Route } from "@/lib/router"
 import { passwordIssues } from "@/lib/vault"
 import { cn } from "@/lib/utils"
@@ -11,12 +10,10 @@ import { Pill, useSlidingPill } from "@/lib/motion"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][] }[] = [
-  { page: "indicators", label: "ملخص الفروع", icon: LayoutDashboard },
-  { page: "reports", label: "مقارنة الفروع", icon: BarChart3, also: ["branch"] },
+  { page: "indicators", label: "رضا العملاء وجودة التواصل", icon: LayoutDashboard, also: ["reports", "alerts", "branch"] },
   { page: "remedial", label: "الخطط العلاجية", icon: ClipboardList },
   { page: "complaints", label: "الشكاوى", icon: MessageSquareWarning },
   { page: "competitors", label: "دراسة المنافسين", icon: Binoculars },
-  { page: "alerts", label: "التنبيهات", icon: Bell },
   { page: "builder", label: "التقارير التنفيذية", icon: FileBarChart2 },
   { page: "sources", label: "المصادر", icon: Database },
 ]
@@ -62,9 +59,8 @@ export function LockedArea({ children }: { children: ReactNode }) {
 
 function SubNav() {
   const { route, go } = useRouter()
-  const { data, vault, member } = useStore()
+  const { vault, member } = useStore()
   const [changing, setChanging] = useState(false)
-  const openAlerts = useMemo(() => (data.branches.length ? buildAlerts(data).filter((a) => !isHandled(a, data.alertState)).length : 0), [data])
   const pill = useSlidingPill<HTMLUListElement>(route.page)
   return (
     <div className="mb-2 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-1.5">
@@ -86,7 +82,6 @@ function SubNav() {
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 {n.label}
-                {n.page === "alerts" && openAlerts > 0 && <span className="num rounded-full bg-warn-soft px-1.5 text-[12px] font-bold leading-5 text-warn">{openAlerts}</span>}
               </button>
             </li>
           )

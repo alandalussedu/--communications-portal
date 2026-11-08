@@ -1,19 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowLeft, Bell, ExternalLink, FileText, FileType2, Folder, RefreshCcw, Search } from "lucide-react"
+import { ArrowLeft, ExternalLink, FileText, FileType2, Folder, RefreshCcw, Search } from "lucide-react"
 import { useRouter } from "@/lib/router"
 import { useStore } from "@/data/store"
 import { INDICATORS, type LinkState } from "@/data/links"
 import type { CellValue, FileItem, IndicatorKey, IndicatorSummary } from "@/data/types"
 import {
   ACADEMIC_YEAR,
-  FRESH_LABEL,
-  FRESH_TONE,
   PERIODS,
   TARGET_LABEL,
   TARGET_TONE,
-  buildAlerts,
   buildRows,
-  isHandled,
   periodLabel,
   type BranchRow,
   type PeriodKey,
@@ -26,7 +22,7 @@ import { ShareButton } from "@/components/ShareButton"
 import { Gate } from "@/components/Gate"
 import { Legend } from "@/components/charts"
 import { compareRows } from "@/components/BranchComparison"
-import { Banner, Chevrons, Dot, Octagram, Panel, PanelHeader, Pill, type Tone } from "@/components/common"
+import { Banner, Panel, PanelHeader, Pill, type Tone } from "@/components/common"
 
 export const LINK_TONE: Record<LinkState, Tone> = { direct: "ok", flagged: "warn", "file-only": "sky", missing: "neutral" }
 
@@ -143,45 +139,30 @@ export function openLibrary(go: ReturnType<typeof useRouter>["go"], q: string, g
 
 const plural = (n: number) => (n === 0 ? "لا يوجد" : n === 1 ? "فرع واحد" : n === 2 ? "فرعان" : `${formatNumber(n)} ${n <= 10 ? "فروع" : "فرعًا"}`)
 
+/** «رضا العملاء وجودة التواصل»: كل فرع ونتيجته مقابل مستهدفه كما في ملفه. */
 export function IndicatorsHomePage() {
   const { data, connection, refresh } = useStore()
   const { go } = useRouter()
   const [period, setPeriod] = usePersistent<PeriodKey>("cc-period", "s1")
   const [ind, setInd] = usePersistent<IndicatorKey>("cc-ind", "satisfaction")
-
   const rows = useMemo(() => buildRows(data, period), [data, period])
-  const openAlerts = useMemo(() => buildAlerts(data).filter((a) => !isHandled(a, data.alertState)), [data])
-  const outcomes = rows.map(branchOutcome)
-  const met = outcomes.filter((o) => o === "met").length
-  const unmet = outcomes.filter((o) => o === "unmet").length
-  const comparable = met + unmet
-  const current = rows.filter((r) => r.fresh === "current").length
-  const withResult = rows.filter((r) => INDICATORS.some((i) => r.ind[i.key].result?.raw)).length
   const compare = useMemo(() => compareRows(rows, ind, go), [rows, ind, go])
 
   return (
-    <Gate needs={["branches", "indicators", "meta", "stages", "syncLog", "settings", "alertState"]} emptyWhen={data.branches.length === 0}>
-      {/* 1 · heading */}
-      <section className="pattern-stars rise relative mt-2 overflow-hidden rounded-2xl bg-band px-6 py-6 text-band-foreground sm:px-8">
-        <Octagram className="pointer-events-none absolute -end-10 -top-12 h-44 w-44 text-gold/25" strokeWidth={1} />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-[14px] text-band-soft">
-              <Chevrons className="h-2.5 w-3 text-gold" />
-              العام الدراسي <span className="num">{ACADEMIC_YEAR}</span>
-            </p>
-            <h1 className="mt-1 text-[28px] font-extrabold leading-tight sm:text-[32px]">ملخص الفروع</h1>
-            <p className="mt-1 text-[16px] text-white/80">نتيجة كل فرع مقابل مستهدفه كما وردت في ملفه، دون أي تجميع بين الفروع.</p>
-          </div>
-          <PeriodSwitch value={period} onChange={setPeriod} onBand />
+    <Gate needs={["branches", "indicators", "meta", "stages", "syncLog", "settings"]} emptyWhen={data.branches.length === 0}>
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-5 pt-6">
+        <div>
+          <p className="eyebrow">العام الدراسي <span className="num">{ACADEMIC_YEAR}</span></p>
+          <h1 className="text-[28px] font-extrabold leading-tight sm:text-[32px]">رضا العملاء وجودة التواصل</h1>
         </div>
-      </section>
+        <PeriodSwitch value={period} onChange={setPeriod} />
+      </div>
 
       {connection.kind === "error" && (
-        <div className="mt-5">
+        <div className="mb-5">
           <Banner
             tone="bad"
-            title="انقطعت المزامنة مع قاعدة المنصة"
+            title="انقطعت المزامنة"
             action={
               <button type="button" onClick={refresh} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-card px-3 text-[15px] text-foreground">
                 <RefreshCcw className="h-4 w-4" />
@@ -189,138 +170,65 @@ export function IndicatorsHomePage() {
               </button>
             }
           >
-            {connection.message} المعروض هو آخر ما وصل قبل الانقطاع.
+            المعروض آخر ما وصل قبل الانقطاع.
           </Banner>
         </div>
       )}
 
-      {/* 2 · four numbers */}
-      <h2 className="sr-only">الأرقام الرئيسية</h2>
-      <ul className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat
-          label="الفروع"
-          value={formatNumber(rows.length)}
-          sub={`${formatNumber(current)} محدّثة · ${withResult ? `${formatNumber(withResult)} لها نتائج` : "لا نتائج بعد"}`}
-          onClick={() => go({ page: "reports" })}
+      <Panel className="rise">
+        <PanelHeader
+          title="النتيجة مقابل المستهدف"
+          hint={periodLabel(period)}
+          actions={<IndicatorSwitch value={ind} onChange={setInd} />}
         />
-        <Stat
-          tone="ok"
-          label="حققت المستهدف"
-          value={comparable ? formatNumber(met) : "—"}
-          sub={comparable ? `من ${formatNumber(comparable)} قابلة للمقارنة` : `بانتظار نتائج ${periodLabel(period)}`}
-          onClick={() => go({ page: "reports" })}
-        />
-        <Stat
-          tone="bad"
-          label="دون المستهدف"
-          value={comparable ? formatNumber(unmet) : "—"}
-          sub={comparable ? `من ${formatNumber(comparable)} قابلة للمقارنة` : `بانتظار نتائج ${periodLabel(period)}`}
-          onClick={() => go({ page: "reports" })}
-        />
-        <Stat
-          tone="warn"
-          label="تنبيهات مفتوحة"
-          value={formatNumber(openAlerts.length)}
-          sub={openAlerts.length ? "تحتاج متابعة" : "لا شيء يحتاج متابعة"}
-          onClick={() => go({ page: "alerts" })}
-          icon={<Bell className="h-4 w-4" aria-hidden="true" />}
-        />
-      </ul>
-
-      {/* 3 · chart + quick file search */}
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        <Panel className="rise">
-          <PanelHeader
-            title="النتيجة مقابل المستهدف"
-            hint={`${periodLabel(period)} · لكل فرع كما في ملفه`}
-            actions={<IndicatorSwitch value={ind} onChange={setInd} />}
-          />
-          <div className="px-5 pb-5 pt-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <Legend items={[{ label: "النتيجة", className: "bg-primary" }, { label: "المستهدف", className: "bg-gold" }]} />
-              {!compare.some((r) => r.value !== null) && (
-                <span className="rounded-full bg-muted px-3 py-0.5 text-[13px] text-muted-foreground">لم تُدخل نتائج {periodLabel(period)} بعد · تظهر المستهدفات وحدها</span>
-              )}
-            </div>
-            <BranchChart rows={compare} />
+        <div className="px-5 pb-5 pt-4">
+          <div className="mb-3">
+            <Legend items={[{ label: "النتيجة", className: "bg-primary" }, { label: "المستهدف", className: "bg-gold" }]} />
           </div>
-        </Panel>
-        <div className="flex flex-col gap-5">
-          <AlertsPreview alerts={openAlerts} />
+          <BranchChart rows={compare} />
         </div>
-      </div>
+      </Panel>
 
-      {/* 5 · one card per branch */}
-      <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-[22px] font-bold">الفروع</h2>
-          <p className="text-[15px] text-muted-foreground">
-            {periodLabel(period)} · اضغط على فرع لفتح ملفه الكامل.
-          </p>
+      <Panel className="rise mt-5 overflow-hidden">
+        <PanelHeader title="مقارنة الفروع" />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[620px] text-[15px]">
+            <thead>
+              <tr className="border-b bg-muted/50 text-[14px] text-muted-foreground">
+                <th scope="col" className="px-5 py-2.5 text-start font-medium">الفرع</th>
+                {INDICATORS.map((it) => (
+                  <th key={it.key} scope="col" className="px-3 py-2.5 text-start font-medium">{it.short}</th>
+                ))}
+                <th scope="col" className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.b.slug} onClick={() => go({ page: "branch", slug: r.b.slug })} className="cursor-pointer border-b last:border-b-0 hover:bg-accent/50">
+                  <th scope="row" className="px-5 py-3 text-start font-bold">{r.b.name}</th>
+                  {INDICATORS.map((it) => {
+                    const c = r.ind[it.key]
+                    return (
+                      <td key={it.key} className="px-3 py-3">
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {c.result?.raw && <span className="num font-bold text-primary" dir="ltr">{c.result.raw}</span>}
+                          {c.target?.raw && <span className="num text-[13px] text-gold-ink" dir="ltr">{c.result?.raw ? "/ " : ""}{c.target.raw}</span>}
+                          <Pill tone={TARGET_TONE[c.status]}>{TARGET_LABEL[c.status]}</Pill>
+                        </span>
+                      </td>
+                    )
+                  })}
+                  <td className="px-3"><ArrowLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <button type="button" onClick={() => go({ page: "reports" })} className="inline-flex items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
-          جدول المقارنة الكامل
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-      </div>
-      <ul className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-        {rows.map((r, i) => (
-          <BranchCard key={r.b.slug} r={r} delay={i} onOpen={() => go({ page: "branch", slug: r.b.slug })} />
-        ))}
-      </ul>
+      </Panel>
     </Gate>
   )
 }
 
-const SEV_TONE: Record<"high" | "medium" | "low", Tone> = { high: "bad", medium: "warn", low: "neutral" }
-
-function AlertsPreview({ alerts }: { alerts: ReturnType<typeof buildAlerts> }) {
-  const { go } = useRouter()
-  const order = { high: 0, medium: 1, low: 2 }
-  const top = [...alerts].sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 4)
-  return (
-    <Panel className="rise">
-      <PanelHeader title="أهم التنبيهات" hint={alerts.length ? `${formatNumber(alerts.length)} تنبيهًا مفتوحًا` : "لا تنبيهات مفتوحة"} />
-      {top.length > 0 && (
-        <ul className="divide-y px-3 py-1">
-          {top.map((a) => (
-            <li key={a.id}>
-              <button type="button" onClick={() => go(a.route)} className="flex w-full items-start gap-2.5 rounded-md px-2 py-2.5 text-start hover:bg-accent/60">
-                <span className="mt-2">
-                  <Dot tone={SEV_TONE[a.severity]} />
-                </span>
-                <span className="min-w-0 text-[14px] leading-snug">{a.title}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="border-t px-5 py-3">
-        <button type="button" onClick={() => go({ page: "alerts" })} className="inline-flex items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
-          كل التنبيهات
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-      </div>
-    </Panel>
-  )
-}
-
-function Stat({ label, value, sub, tone = "brand", onClick, icon }: { label: string; value: string; sub: string; tone?: Tone; onClick?: () => void; icon?: React.ReactNode }) {
-  const bar: Record<Tone, string> = { ok: "bg-ok", bad: "bg-bad", warn: "bg-warn", brand: "bg-primary", neutral: "bg-muted-foreground/40", gold: "bg-gold", sky: "bg-sky" }
-  return (
-    <li className="rise">
-      <button type="button" onClick={onClick} className="lift relative block h-full w-full rounded-xl border bg-card px-4 py-3.5 ps-5 text-start hover:border-primary/40">
-        <span className={cn("absolute inset-y-3 start-0 w-1 rounded-full", bar[tone])} aria-hidden="true" />
-        <span className="flex items-center gap-1.5 text-[14px] font-medium text-muted-foreground">
-          {icon}
-          {label}
-        </span>
-        <span className="num mt-0.5 block text-[28px] font-extrabold leading-tight">{value}</span>
-        <span className="block text-[14px] leading-snug text-muted-foreground">{sub}</span>
-      </button>
-    </li>
-  )
-}
 
 /** Horizontal bars, one row per branch: navy bar for the result, gold tick for the target. Percentages only. */
 function BranchChart({ rows }: { rows: ReturnType<typeof compareRows> }) {
@@ -367,7 +275,6 @@ function BranchChart({ rows }: { rows: ReturnType<typeof compareRows> }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[13px] text-muted-foreground">الرقم على اليسار هو النتيجة، أو المستهدف بالذهبي إن لم تُدخل النتيجة. تظهر النسب المئوية فقط.</p>
     </div>
   )
 }
@@ -475,41 +382,3 @@ export function FileRow({ f }: { f: FileItem }) {
   )
 }
 
-function BranchCard({ r, delay, onOpen }: { r: BranchRow; delay: number; onOpen: () => void }) {
-  return (
-    <li className="rise" style={{ animationDelay: `${Math.min(delay, 10) * 35}ms` }}>
-      <button type="button" onClick={onOpen} className="lift flex h-full w-full flex-col rounded-xl border bg-card p-4 text-start hover:border-primary/40">
-        <span className="flex items-start justify-between gap-2">
-          <span className="text-[18px] font-bold leading-snug">{r.b.name}</span>
-          <span className="mt-1.5 inline-flex shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground" title={FRESH_LABEL[r.fresh]}>
-            <Dot tone={FRESH_TONE[r.fresh]} />
-            {FRESH_LABEL[r.fresh]}
-          </span>
-        </span>
-        <span className="mt-3 flex flex-col gap-3 border-t pt-3">
-          {INDICATORS.map((it) => {
-            const c = r.ind[it.key]
-            return (
-              <span key={it.key} className="block">
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="text-[14px] text-muted-foreground">{it.short}</span>
-                  <span className="num text-[15px]" dir="ltr">
-                    {c.result?.raw ? <span className="font-bold text-primary">{c.result.raw}</span> : <span className="text-[13px] text-muted-foreground">{c.s ? "لم تُدخل" : "—"}</span>}
-                  </span>
-                </span>
-                <span className="mt-0.5 flex items-center justify-between gap-2">
-                  <span className="text-[13px] text-muted-foreground">
-                    المستهدف {c.target?.raw ? <span className="num font-medium text-gold-ink" dir="ltr">{c.target.raw}</span> : "غير منقول"}
-                  </span>
-                </span>
-                {c.status !== "no-result" && c.status !== "no-data" && (
-                  <Pill tone={TARGET_TONE[c.status]} className="mt-1 px-2 py-0 text-[12px]">{TARGET_LABEL[c.status]}</Pill>
-                )}
-              </span>
-            )
-          })}
-        </span>
-      </button>
-    </li>
-  )
-}

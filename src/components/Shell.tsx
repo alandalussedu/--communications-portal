@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
-import { useMemo, type ReactNode as RN } from "react"
+import { type ReactNode as RN } from "react"
 import { BarChart3, CalendarDays, FolderOpen, HandHeart, House, Loader2, Lock, LockOpen, Megaphone, UserRound } from "lucide-react"
-import { buildAlerts, isHandled } from "@/data/insights"
 import { cn } from "@/lib/utils"
 import { LOCKED_PAGES, useRouter, type Route } from "@/lib/router"
 import { useStore } from "@/data/store"
@@ -80,13 +79,12 @@ export function SyncStatus({ onBand = false }: { onBand?: boolean }) {
 
 export function Shell({ children }: { children: ReactNode }) {
   const { route, go } = useRouter()
-  const { data, vault } = useStore()
+  const { vault } = useStore()
   const open = vault.status === "unlocked"
   const activeKey = NAV.find((n) => route.page === n.page || n.also?.includes(route.page))?.page
   const dock = useSlidingPill<HTMLUListElement>(activeKey)
   const bar = useSlidingPill<HTMLUListElement>(activeKey)
-  const openAlerts = useMemo(() => (open && data.branches.length ? buildAlerts(data).filter((a) => !isHandled(a, data.alertState)).length : 0), [data, open])
-  const badge: Partial<Record<Route["page"], RN>> = openAlerts ? { indicators: <span className="num rounded-full bg-warn-soft px-1.5 text-[12px] font-bold leading-5 text-warn">{openAlerts}</span> } : {}
+  const badge: Partial<Record<Route["page"], RN>> = {}
   return (
     <div className="min-h-full">
       {/* «ضوء المشربية»: decorative lattice in the side margins only (wide screens) */}

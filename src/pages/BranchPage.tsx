@@ -13,19 +13,16 @@ import {
   SATISFACTION_COMPONENTS,
   TARGET_LABEL,
   TARGET_TONE,
-  buildAlerts,
   buildRows,
   periodCells,
   sharedEvents,
   targetStatus,
   type BranchRow,
-  isHandled,
 } from "@/data/insights"
 import { formatDate, formatNumber, matches } from "@/lib/format"
 import { usePersistent } from "@/lib/persist"
 import { cn } from "@/lib/utils"
 import { Gate } from "@/components/Gate"
-import { AlertList } from "@/components/alerts"
 import { DataTable, type Column } from "@/components/DataTable"
 import { GroupBars, JourneyChart, JourneySteps, Legend, StackedBars, journey } from "@/components/charts"
 import { Banner, ChipGroup, EmptyState, Octagram, OpenLink, Panel, PanelHeader, Pill, SearchField, Val } from "@/components/common"
@@ -53,7 +50,7 @@ export function BranchPage({ slug }: { slug: string }) {
           المؤشرات
         </button>
         <ChevronLeft className="mx-1 inline h-4 w-4" aria-hidden="true" />
-        <button type="button" onClick={() => go({ page: "reports" })} className="hover:text-foreground hover:underline">
+        <button type="button" onClick={() => go({ page: "indicators" })} className="hover:text-foreground hover:underline">
           مقارنة الفروع
         </button>
         <ChevronLeft className="mx-1 inline h-4 w-4" aria-hidden="true" />
@@ -66,7 +63,7 @@ export function BranchPage({ slug }: { slug: string }) {
               title="لم نجد هذا الفرع"
               body="قد يكون الرابط قديمًا أو أن الفرع غير مسجّل في سجل الروابط."
               action={
-                <button type="button" onClick={() => go({ page: "reports" })} className="text-[16px] font-bold text-primary underline">
+                <button type="button" onClick={() => go({ page: "indicators" })} className="text-[16px] font-bold text-primary underline">
                   العودة إلى الفروع
                 </button>
               }
@@ -80,22 +77,20 @@ export function BranchPage({ slug }: { slug: string }) {
   )
 }
 
-type Tab = "satisfaction" | "communication" | "plans" | "stages" | "log" | "alerts"
+type Tab = "satisfaction" | "communication" | "plans" | "stages" | "log"
 const SECTIONS: [Tab, string][] = [
   ["satisfaction", "رضا العملاء"],
   ["communication", "جودة التواصل"],
   ["plans", "الخطط"],
   ["stages", "المراحل"],
   ["log", "سجل التحديثات"],
-  ["alerts", "التنبيهات"],
 ]
 
 function BranchBody({ row, summaries }: { row: BranchRow; summaries: IndicatorSummary[] }) {
-  const { data } = useStore()
   const { b, sync, fresh, complete, stages } = row
-  const alerts = useMemo(() => buildAlerts(data).filter((a) => a.branch?.slug === b.slug), [data, b.slug])
-  const openAlerts = alerts.filter((a) => !isHandled(a, data.alertState)).length
-  const [tab, setTab] = usePersistent<Tab>("branch-tab", "satisfaction")
+  const [saved, setTab] = usePersistent<Tab>("branch-tab", "satisfaction")
+  // a tab saved before «التنبيهات» was removed falls back to the first one
+  const tab: Tab = SECTIONS.some(([k]) => k === saved) ? saved : "satisfaction"
 
   return (
     <>
@@ -197,7 +192,6 @@ function BranchBody({ row, summaries }: { row: BranchRow; summaries: IndicatorSu
             )}
           >
             {label}
-            {id === "alerts" && openAlerts > 0 && <span className="num rounded-full bg-warn-soft px-1.5 text-[12px] font-bold leading-5 text-warn">{openAlerts}</span>}
             {tab === id && <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-full bg-primary" aria-hidden="true" />}
           </button>
         ))}
@@ -207,18 +201,6 @@ function BranchBody({ row, summaries }: { row: BranchRow; summaries: IndicatorSu
         {(tab === "satisfaction" || tab === "communication") && (
           <IndicatorSection key={tab} b={b} ind={tab} s={summaries.find((x) => x.indicator === tab)} stages={stages} />
         )}
-
-        {tab === "alerts" &&
-          (alerts.length > 0 ? (
-            <Panel className="mt-6">
-              <PanelHeader title="تنبيهات هذا الفرع" hint="الحالات التي رُصدت في بيانات الفرع وروابطه." />
-              <AlertList alerts={alerts} compact />
-            </Panel>
-          ) : (
-            <Panel className="mt-6">
-              <EmptyState compact title="لا تنبيهات لهذا الفرع" body="لم تُرصد حالات تحتاج متابعة في بيانات الفرع وروابطه." />
-            </Panel>
-          ))}
 
         {tab === "plans" && (
           <section className="mt-6" aria-labelledby="plans-title">
