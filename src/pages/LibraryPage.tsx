@@ -300,7 +300,7 @@ function FileCard({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdi
         <div className="min-w-0 flex-1">
           <p className={cn("break-words text-[17px] font-bold leading-snug", !f.named && "text-foreground/80")}>{f.title}</p>
           <p className="mt-0.5 text-[14px] text-muted-foreground">
-            {FILE_KIND_LABEL[f.kind]}
+            {FILE_KIND_LABEL[f.kind]} · {f.group}
             {f.version ? ` · الإصدار ${f.version}` : ""}
           </p>
         </div>
@@ -357,6 +357,7 @@ function FileTable({ rows, canEdit, onEdit }: { rows: FileItem[]; canEdit: boole
       ),
     },
     { key: "section", header: "القسم", sort: (f) => f.section ?? null, render: (f) => (f.section ? <span className="whitespace-nowrap">{SECTION_LABEL[f.section]}</span> : <span className="text-muted-foreground">—</span>) },
+    { key: "group", header: "التصنيف", sort: (f) => f.group, render: (f) => <span className="whitespace-nowrap">{f.group}</span> },
     { key: "kind", header: "النوع", sort: (f) => f.kind, render: (f) => FILE_KIND_LABEL[f.kind] },
     { key: "status", header: "حالة الاعتماد", sort: (f) => f.status ?? null, render: (f) => <StatusPill f={f} /> },
     { key: "date", header: "تاريخ التحديث", sort: (f) => f.docDate ?? null, render: (f) => (f.docDate ? <span className="num whitespace-nowrap">{formatDate(f.docDate)}</span> : <span className="text-muted-foreground">—</span>) },
