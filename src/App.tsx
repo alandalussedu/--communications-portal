@@ -17,6 +17,7 @@ import { CalendarPage } from "@/pages/CalendarPage"
 import { MembersPage } from "@/pages/MembersPage"
 import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
+import { PbxPage } from "@/pages/PbxPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
 import { useEffect } from "react"
 import { useStore } from "@/data/store"
@@ -69,6 +70,8 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
       return <RemedialPage key={nonce} slug={route.slug} />
     case "complaints":
       return <ComplaintsPage key={nonce} />
+    case "pbx":
+      return <PbxPage key={nonce} />
     case "competitors":
       return <CompetitorsPage key={nonce} />
     case "builder":

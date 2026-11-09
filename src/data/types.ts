@@ -199,7 +199,26 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports"
+
+/* ------------------------------------------------------------ PBX (3CX) monthly response of branch communication officers */
+/** A branch communication officer and the extension(s) central transfers ring. id = a stable slug. */
+export type PbxOfficer = { id: string; name: string; branch: string; school: string; exts: string[]; order: number; active: boolean }
+/** One officer's month: counted on their own extension(s) only. «Waiting» calls are left out. */
+export type PbxLine = { officer: string; name: string; branch: string; school: string; exts: string[]; attempts: number; answered: number; unanswered: number; voicemail: number }
+/** id = YYYY-MM. Only these counts are kept: the uploaded file (with callers' numbers) is never stored. */
+export type PbxReport = {
+  id: string
+  month: string
+  /** first and last call date the file had inside this month (YYYY-MM-DD) */
+  from: string | null
+  to: string | null
+  lines: PbxLine[]
+  waitingExcluded: number
+  source: string
+  fileName: string | null
+  uploadedAt: string
+}
 
 /* ------------------------------------------------------------ monthly complaint reports (uploaded Word files) */
 /** One piece of the report, in the order it appears in the Word file. Nothing is computed or added. */
