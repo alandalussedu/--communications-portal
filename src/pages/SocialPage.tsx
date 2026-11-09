@@ -7,7 +7,7 @@ import { formatDate, formatNumber } from "@/lib/format"
 import { usePersistent } from "@/lib/persist"
 import { cn } from "@/lib/utils"
 import { Gate } from "@/components/Gate"
-import { ChipGroup, EmptyState, PageHeader, Panel, PanelHeader } from "@/components/common"
+import { PageHeader, Panel, PanelHeader } from "@/components/common"
 import { AccountForm, Growth, PlatformBadge, ReadingsForm, Sparkline } from "@/components/social"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
@@ -36,7 +36,6 @@ export function MonthStepper({ month, onChange, max }: { month: string; onChange
   )
 }
 
-type OwnerFilter = "all" | "company" | "branches"
 type Editing = { kind: "account"; item?: SocialAccount } | { kind: "readings" } | null
 
 export function SocialPage() {
@@ -44,14 +43,11 @@ export function SocialPage() {
   const latest = defaultSocialMonth(data.socialReadings)
   const maxMonth = latest > currentMonth() ? latest : currentMonth()
   const [month, setMonth] = usePersistent("social-month", latest)
-  const [owner, setOwner] = useState<OwnerFilter>("all")
-  const [entity, setEntity] = usePersistent("social-entity", "all")
   const [editing, setEditing] = useState<Editing>(null)
   const idx = useMemo(() => indexReadings(data.socialReadings), [data.socialReadings])
 
   const accounts = data.socialAccounts.filter((a) => a.active || canEdit)
-  const entities = Array.from(new Set(accounts.map(groupOf)))
-  const shown = accounts.filter((a) => (owner === "all" || (owner === "company" ? a.owner === "company" : a.owner !== "company")) && (entity === "all" || groupOf(a) === entity))
+  const shown = accounts
   const rows = shown.map((a) => ({ a, m: accountMonth(idx, a.id, month) }))
   const recorded = rows.filter((r) => r.m.followers !== null).length
   const grew = rows.filter((r) => (r.m.growth ?? 0) > 0).length
@@ -59,7 +55,6 @@ export function SocialPage() {
   const top = rows.filter((r) => r.m.growth !== null && r.m.growth > 0).sort((x, y) => y.m.growth! - x.m.growth!)[0]
   const social = rows.filter((r) => !isWhatsApp(r.a))
   const whats = rows.filter((r) => isWhatsApp(r.a))
-  const hasBranchAccounts = accounts.some((a) => a.owner !== "company")
   const lastRecorded = data.socialReadings.reduce<string | null>((m, r) => (!m || r.recordedAt > m ? r.recordedAt : m), null)
 
   return (
@@ -98,28 +93,8 @@ export function SocialPage() {
           )
         }
       >
-        <div className="rise mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card px-5 py-3">
+        <div className="rise mb-5 flex justify-center sm:justify-start">
           <MonthStepper month={month} onChange={setMonth} max={maxMonth} />
-          {entities.length > 1 && (
-            <ChipGroup<string>
-              label="الجهة"
-              value={entity}
-              onChange={setEntity}
-              options={[{ value: "all", label: "الكل", count: accounts.length }, ...entities.map((n) => ({ value: n, label: n, count: accounts.filter((a) => groupOf(a) === n).length }))]}
-            />
-          )}
-          {hasBranchAccounts && (
-            <ChipGroup<OwnerFilter>
-              label="النوع"
-              value={owner}
-              onChange={setOwner}
-              options={[
-                { value: "all", label: "الكل", count: accounts.length },
-                { value: "company", label: "الشركة", count: accounts.filter((a) => a.owner === "company").length },
-                { value: "branches", label: "الفروع", count: accounts.filter((a) => a.owner !== "company").length },
-              ]}
-            />
-          )}
         </div>
 
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">

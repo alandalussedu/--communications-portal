@@ -1,25 +1,20 @@
 import { useMemo, useState } from "react"
-import { Check, ChevronDown, Download, FileText, FileType2, Folder, LayoutGrid, List, Pencil, Plus, Search, Settings2, SlidersHorizontal, Tags, X } from "lucide-react"
+import { Check, Download, FileText, FileType2, Folder, LayoutGrid, List, Pencil, Plus, Search, Settings2, Tags, X } from "lucide-react"
 import { useStore } from "@/data/store"
-import { FILE_STATUSES, LIBRARY_SECTIONS, type FileItem, type FileStatus, type LibrarySection } from "@/data/types"
+import { LIBRARY_SECTIONS, type FileItem, type FileStatus, type LibrarySection } from "@/data/types"
 import { useRouter } from "@/lib/router"
 import { formatDate, formatNumber } from "@/lib/format"
 import { FILE_KIND_LABEL, downloadUrl, searchFiles } from "@/lib/search"
 import { usePersistent } from "@/lib/persist"
-import { daysSince } from "@/data/insights"
 import { cn } from "@/lib/utils"
 import { Gate } from "@/components/Gate"
 import { DataTable, type Column } from "@/components/DataTable"
-import { ChipGroup, CopyButton, EmptyState, OpenLink, PageHeader, Panel, Pill, SelectField, type Tone } from "@/components/common"
+import { CopyButton, EmptyState, OpenLink, PageHeader, Panel, Pill, type Tone } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { FileForm, SynonymsForm } from "@/components/admin"
 import { ShareButton } from "@/components/ShareButton"
 import { Pill as SlidePill, useSlidingPill } from "@/lib/motion"
 
-type Kind = "all" | "folder" | "file" | "doc" | "waiting"
-type StatusFilter = "all" | FileStatus | "none"
-type DateFilter = "all" | "30" | "90" | "365" | "none"
-type SortKey = "relevance" | "order" | "title" | "date"
 
 const STATUS_TONE: Record<FileStatus, Tone> = { معتمد: "ok", مسودة: "warn", مؤرشف: "neutral" }
 
@@ -37,70 +32,24 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [savingSec, setSavingSec] = useState(false)
   const [q, setQ] = usePersistent("lib-q", "")
-  const [group, setGroup] = usePersistent("lib-group", "all")
-  const [kind, setKind] = usePersistent<Kind>("lib-kind", "all")
-  const [status, setStatus] = usePersistent<StatusFilter>("lib-status", "all")
-  const [owner, setOwner] = usePersistent("lib-owner", "all")
-  const [date, setDate] = usePersistent<DateFilter>("lib-date", "all")
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [showInactive, setShowInactive] = usePersistent("lib-inactive", false)
-  const [sort, setSort] = usePersistent<SortKey>("lib-sort", "relevance")
   const [view, setView] = usePersistent<"cards" | "table">("lib-view", "cards")
   const [editing, setEditing] = useState<FileItem | "new" | "synonyms" | null>(null)
 
   const files = data.files
   const synonyms = data.settings?.synonyms ?? []
   const groups = useMemo(() => Array.from(new Set(files.map((f) => f.group))), [files])
-  const owners = useMemo(() => Array.from(new Set(files.map((f) => f.owner).filter(Boolean))) as string[], [files])
-  const inactiveCount = files.filter((f) => f.status === "مسودة" || f.status === "مؤرشف").length
 
   const hits = useMemo(() => searchFiles(files, q, synonyms), [files, q, synonyms])
+  // Sections are the only filter; drafts and archived copies show to editors only.
   const pass = (f: FileItem, skip?: string) =>
-    (skip === "section" || sec === "all" || (sec === "none" ? !f.section : f.section === sec)) &&
-    (skip === "group" || group === "all" || f.group === group) &&
-    (skip === "kind" || kind === "all" || (kind === "waiting" ? !f.url : !!f.url && f.kind === kind) || (kind === "doc" && f.kind === "doc")) &&
-    (skip === "status" || status === "all" || (status === "none" ? !f.status : f.status === status)) &&
-    (skip === "owner" || owner === "all" || f.owner === owner) &&
-    (skip === "date" ||
-      date === "all" ||
-      (date === "none" ? !f.docDate : !!f.docDate && daysSince(f.docDate) <= Number(date))) &&
-    // The latest approved copy is the default view: recorded drafts and archived copies stay hidden until asked for.
-    (showInactive || status === "مسودة" || status === "مؤرشف" || !(f.status === "مسودة" || f.status === "مؤرشف"))
+    (skip === "section" || sec === "all" || (sec === "none" ? !f.section : f.section === sec)) && (canEdit || !(f.status === "مسودة" || f.status === "مؤرشف"))
 
   const visible = useMemo(() => {
     const list = hits.filter((h) => pass(h.f))
-    const by = sort === "relevance" && !q ? "order" : sort
-    if (by === "title") return [...list].sort((a, b) => a.f.title.localeCompare(b.f.title, "ar"))
-    if (by === "order") return [...list].sort((a, b) => a.f.order - b.f.order)
-    if (by === "date") return [...list].sort((a, b) => (b.f.docDate ?? "").localeCompare(a.f.docDate ?? ""))
-    return list
-  }, [hits, sec, group, kind, status, owner, date, showInactive, sort, q]) // eslint-disable-line react-hooks/exhaustive-deps
+    return q ? list : [...list].sort((a, b) => a.f.order - b.f.order)
+  }, [hits, sec, q, canEdit]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const countFor = (skip: string, test: (f: FileItem) => boolean) => hits.filter((h) => pass(h.f, skip) && test(h.f)).length
-
-  const active = [
-    q && { label: `«${q}»`, clear: () => setQ("") },
-    group !== "all" && { label: group, clear: () => setGroup("all") },
-    kind !== "all" && { label: kind === "waiting" ? "بانتظار الرابط" : FILE_KIND_LABEL[kind as FileItem["kind"]], clear: () => setKind("all") },
-    status !== "all" && { label: status === "none" ? "اعتماد غير مسجّل" : status, clear: () => setStatus("all") },
-    owner !== "all" && { label: owner, clear: () => setOwner("all") },
-    date !== "all" && { label: date === "none" ? "تاريخ غير مسجّل" : `آخر ${date} يومًا`, clear: () => setDate("all") },
-    showInactive && { label: "يشمل المسودات والمؤرشف", clear: () => setShowInactive(false) },
-  ].filter(Boolean) as { label: string; clear: () => void }[]
-
-  const clearAll = () => {
-    setQ("")
-    setGroup("all")
-    setKind("all")
-    setStatus("all")
-    setOwner("all")
-    setDate("all")
-    setShowInactive(false)
-  }
-
-  // When nothing matches, say which filter is in the way.
-  const blockers = active.filter((a) => a.label !== `«${q}»`)
-  const qOnly = q ? searchFiles(files, q, synonyms).length : files.length
 
   const togglePick = (id: string) =>
     setPicked((prev) => {
@@ -156,31 +105,6 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
         }
       />
       <Gate needs={["files", "settings"]} emptyWhen={files.length === 0} emptyTitle="المكتبة فارغة" emptyBody={canEdit ? "أضف أول ملف من زر «إضافة ملف»." : "لم تُضف ملفات إلى المكتبة بعد."}>
-        <div ref={secPill.ref} className="relative mb-4 flex gap-1.5 overflow-x-auto rounded-2xl border bg-card p-1.5 [scrollbar-width:none]" role="tablist" aria-label="أقسام المكتبة">
-          <SlidePill box={secPill.box} ready={secPill.ready} className="rounded-xl bg-primary" />
-          {(
-            [
-              { value: "all", label: "كل الأقسام" },
-              ...LIBRARY_SECTIONS.map((s) => ({ value: s.key, label: s.label })),
-              ...(canEdit ? [{ value: "none", label: "غير مصنّف" }] : []),
-            ] as { value: SectionFilter; label: string }[]
-          ).map((o) => {
-            const n = countFor("section", (f) => (o.value === "all" ? true : o.value === "none" ? !f.section : f.section === o.value))
-            return (
-              <button
-                key={o.value}
-                type="button"
-                role="tab"
-                aria-selected={sec === o.value}
-                onClick={() => setSec(o.value)}
-                className={cn("relative z-10 inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-[16px] transition-colors duration-300", sec === o.value ? "font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
-              >
-                {o.label}
-                <span className={cn("num rounded-full px-1.5 text-[13px]", sec === o.value ? "bg-white/20" : "bg-muted")}>{formatNumber(n)}</span>
-              </button>
-            )
-          })}
-        </div>
         {classifying && (
           <div className="sticky z-20 mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-primary/40 bg-card p-3 shadow-sm" style={{ top: "4rem" }}>
             <span className="text-[15px]">
@@ -206,7 +130,7 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
             </button>
           </div>
         )}
-        <div className="rise mb-6 overflow-hidden rounded-2xl border bg-card">
+        <div className="rise mb-4 overflow-hidden rounded-2xl border bg-card">
           <div className="pattern-stars bg-band px-5 py-6 sm:px-8">
             <label htmlFor="lib-search" className="mb-2 block text-[16px] font-bold text-band-foreground">
               عن ماذا تبحث؟
@@ -227,137 +151,46 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
                 </button>
               )}
             </div>
-            <p className="mt-2 text-[14px] text-band-soft">
-              يبحث في: اسم الملف، الوصف، التصنيف، الكلمات المفتاحية، المرادفات المسجلة، ونوع الملف. لا يبحث داخل محتوى ملفات PDF أو Word لأنها غير مفهرسة.
-            </p>
           </div>
 
-          <div className="flex flex-col gap-3 px-5 py-4">
-            {/* phones: the filters fold behind one button so the results come first */}
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((o) => !o)}
-              aria-expanded={filtersOpen}
-              aria-controls="lib-filters"
-              className="inline-flex h-11 items-center justify-between gap-2 rounded-xl border px-4 text-[15px] font-bold md:hidden"
-            >
-              <span className="inline-flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-                تصفية النتائج
-                {active.length > 0 && <span className="num rounded-full bg-primary px-2 text-[13px] leading-6 text-primary-foreground">{formatNumber(active.length)}</span>}
-              </span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", filtersOpen && "rotate-180")} aria-hidden="true" />
-            </button>
-            <div id="lib-filters" className={cn("flex-col gap-3", filtersOpen ? "flex" : "hidden md:flex")}>
-            <ChipGroup
-              label="التصنيف"
-              value={group}
-              onChange={setGroup}
-              options={[{ value: "all", label: "الكل" }, ...groups.map((g) => ({ value: g, label: g, count: countFor("group", (f) => f.group === g) }))]}
-            />
-            <ChipGroup<Kind>
-              label="النوع"
-              value={kind}
-              onChange={setKind}
-              options={[
-                { value: "all", label: "الكل" },
-                { value: "folder", label: "مجلدات", count: countFor("kind", (f) => !!f.url && f.kind === "folder") },
-                { value: "file", label: "ملفات", count: countFor("kind", (f) => !!f.url && f.kind === "file") },
-                { value: "waiting", label: "بانتظار الرابط", count: countFor("kind", (f) => !f.url) },
-              ]}
-            />
-            <ChipGroup<StatusFilter>
-              label="حالة الاعتماد"
-              value={status}
-              onChange={setStatus}
-              options={[
-                { value: "all", label: "الكل" },
-                ...FILE_STATUSES.map((s) => ({ value: s, label: s, count: countFor("status", (f) => f.status === s) })),
-                { value: "none", label: "غير مسجّلة", count: countFor("status", (f) => !f.status) },
-              ]}
-            />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <SelectField
-                id="lib-date"
-                label="تاريخ التحديث"
-                value={date}
-                onChange={(v) => setDate(v as DateFilter)}
-                options={[
-                  { value: "all", label: "أي تاريخ" },
-                  { value: "30", label: "آخر 30 يومًا" },
-                  { value: "90", label: "آخر 90 يومًا" },
-                  { value: "365", label: "آخر سنة" },
-                  { value: "none", label: `غير مسجّل (${formatNumber(countFor("date", (f) => !f.docDate))})` },
-                ]}
-              />
-              {owners.length > 0 ? (
-                <SelectField id="lib-owner" label="الجهة المالكة" value={owner} onChange={setOwner} options={[{ value: "all", label: "كل الجهات" }, ...owners.map((o) => ({ value: o, label: o }))]} />
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <span className="text-[14px] text-muted-foreground">الجهة المالكة</span>
-                  <span className="flex h-9 items-center rounded-md border border-dashed px-2.5 text-[14px] text-muted-foreground">لم تُسجّل جهات مالكة بعد</span>
-                </div>
-              )}
-              <SelectField
-                id="lib-sort"
-                label="الترتيب"
-                value={sort}
-                onChange={(v) => setSort(v as SortKey)}
-                options={[
-                  { value: "relevance", label: "الأقرب للبحث" },
-                  { value: "order", label: "كما في السجل" },
-                  { value: "title", label: "الاسم" },
-                  { value: "date", label: "الأحدث تحديثًا" },
-                ]}
-              />
-              <label className="flex min-h-11 items-end gap-2 pb-1.5 text-[15px]">
-                <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-5 w-5 accent-[hsl(var(--primary))]" />
-                <span>
-                  إظهار المسودات والمؤرشف
-                  <span className="num ms-1 text-muted-foreground">({formatNumber(inactiveCount)})</span>
-                </span>
-              </label>
-            </div>
-            </div>
-            {active.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-                <span className="text-[14px] text-muted-foreground">المفعّل</span>
-                {active.map((a) => (
-                  <button key={a.label} type="button" onClick={a.clear} className="inline-flex h-8 items-center gap-1 rounded-full bg-secondary px-3 text-[14px] text-secondary-foreground hover:bg-secondary/80">
-                    {a.label}
-                    <X className="h-3.5 w-3.5" aria-label="إزالة" />
-                  </button>
-                ))}
-                <button type="button" onClick={clearAll} className="text-[14px] font-bold text-primary hover:underline">
-                  مسح الكل
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
+        <div ref={secPill.ref} className="relative mb-4 flex gap-1.5 overflow-x-auto rounded-2xl border bg-card p-1.5 [scrollbar-width:none]" role="tablist" aria-label="أقسام المكتبة">
+          <SlidePill box={secPill.box} ready={secPill.ready} className="rounded-xl bg-primary" />
+          {(
+            [
+              { value: "all", label: "كل الأقسام" },
+              ...LIBRARY_SECTIONS.map((s) => ({ value: s.key, label: s.label })),
+              ...(canEdit ? [{ value: "none", label: "غير مصنّف" }] : []),
+            ] as { value: SectionFilter; label: string }[]
+          ).map((o) => {
+            const n = countFor("section", (f) => (o.value === "all" ? true : o.value === "none" ? !f.section : f.section === o.value))
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="tab"
+                aria-selected={sec === o.value}
+                onClick={() => setSec(o.value)}
+                className={cn("relative z-10 inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-[16px] transition-colors duration-300", sec === o.value ? "font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+              >
+                {o.label}
+                <span className={cn("num rounded-full px-1.5 text-[13px]", sec === o.value ? "bg-white/20" : "bg-muted")}>{formatNumber(n)}</span>
+              </button>
+            )
+          })}
+        </div>
         {visible.length === 0 ? (
           <Panel>
             <EmptyState
               title="لا ملفات تطابق البحث"
-              body={
-                q && qOnly > 0 && blockers.length
-                  ? `توجد ${formatNumber(qOnly)} نتيجة لكلمة «${q}» لكن المرشحات تخفيها. أزل مرشحًا أو أكثر.`
-                  : q
-                    ? "جرّب كلمة أقصر، أو اسمًا آخر للملف، أو اكتب التصنيف (مثل: الهوية، العالمية، الشركة)."
-                    : "أزل بعض المرشحات لعرض ملفات أكثر."
-              }
+              body={q ? "جرّب كلمة أقصر أو اسمًا آخر للملف." : "لا ملفات في هذا القسم بعد."}
               action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  {blockers.map((b) => (
-                    <button key={b.label} type="button" onClick={b.clear} className="inline-flex h-8 items-center gap-1 rounded-full border px-3 text-[14px] hover:bg-accent">
-                      إزالة: {b.label}
-                    </button>
-                  ))}
-                  <button type="button" onClick={clearAll} className="h-8 rounded-full px-3 text-[14px] font-bold text-primary underline underline-offset-4">
-                    مسح الكل
+                q || sec !== "all" ? (
+                  <button type="button" onClick={() => (setQ(""), setSec("all"))} className="h-9 rounded-full border px-4 text-[14px] font-bold hover:bg-accent">
+                    عرض كل المكتبة
                   </button>
-                </div>
+                ) : undefined
               }
             />
           </Panel>
@@ -467,10 +300,9 @@ function FileCard({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdi
         <div className="min-w-0 flex-1">
           <p className={cn("break-words text-[17px] font-bold leading-snug", !f.named && "text-foreground/80")}>{f.title}</p>
           <p className="mt-0.5 text-[14px] text-muted-foreground">
-            {FILE_KIND_LABEL[f.kind]} · {f.group}
+            {FILE_KIND_LABEL[f.kind]}
             {f.version ? ` · الإصدار ${f.version}` : ""}
           </p>
-          {f.section && <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[13px] font-bold text-secondary-foreground">{SECTION_LABEL[f.section]}</span>}
         </div>
         {canEdit && (
           <button type="button" onClick={onEdit} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={`تعديل ${f.title}`}>
@@ -483,15 +315,6 @@ function FileCard({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdi
         <StatusPill f={f} />
         <span className="num text-[14px] text-muted-foreground">{f.docDate ? `حُدّث ${formatDate(f.docDate)}` : "تاريخ التحديث غير مسجّل"}</span>
       </div>
-      {f.keywords && f.keywords.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {f.keywords.map((k) => (
-            <span key={k} className="rounded-full bg-muted px-2 py-0.5 text-[13px] text-muted-foreground">
-              {k}
-            </span>
-          ))}
-        </div>
-      )}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t pt-3">
         {ready ? (
           <>
@@ -534,7 +357,6 @@ function FileTable({ rows, canEdit, onEdit }: { rows: FileItem[]; canEdit: boole
       ),
     },
     { key: "section", header: "القسم", sort: (f) => f.section ?? null, render: (f) => (f.section ? <span className="whitespace-nowrap">{SECTION_LABEL[f.section]}</span> : <span className="text-muted-foreground">—</span>) },
-    { key: "group", header: "التصنيف", sort: (f) => f.group, render: (f) => <span className="whitespace-nowrap">{f.group}</span> },
     { key: "kind", header: "النوع", sort: (f) => f.kind, render: (f) => FILE_KIND_LABEL[f.kind] },
     { key: "status", header: "حالة الاعتماد", sort: (f) => f.status ?? null, render: (f) => <StatusPill f={f} /> },
     { key: "date", header: "تاريخ التحديث", sort: (f) => f.docDate ?? null, render: (f) => (f.docDate ? <span className="num whitespace-nowrap">{formatDate(f.docDate)}</span> : <span className="text-muted-foreground">—</span>) },

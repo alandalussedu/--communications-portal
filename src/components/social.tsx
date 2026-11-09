@@ -6,6 +6,7 @@ import { PLATFORMS, accountMonth, indexReadings, monthLabel, ownerLabel, platfor
 import { formatNumber } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Banner, SelectField, type Tone } from "./common"
+import { PlatformLogo, hasLogo } from "@/components/PlatformLogo"
 
 const BADGE: Record<Tone, string> = {
   ok: "bg-ok text-white",
@@ -20,13 +21,16 @@ const BADGE: Record<Tone, string> = {
 /** A platform shown as a coloured initial (no third-party logos). */
 export function PlatformBadge({ platform, size = "md" }: { platform: string; size?: "sm" | "md" | "lg" }) {
   const p = platformOf(platform)
+  const box = size === "sm" ? "h-7 w-7" : size === "lg" ? "h-12 w-12" : "h-10 w-10"
+  if (hasLogo(p.key))
+    return (
+      <span className={cn("inline-flex shrink-0 overflow-hidden rounded-xl shadow-sm", size === "sm" && "rounded-lg", box)} title={p.label} aria-hidden="true">
+        <PlatformLogo platform={p.key} className="h-full w-full" />
+      </span>
+    )
   return (
     <span
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-xl font-bold",
-        BADGE[p.tone],
-        size === "sm" ? "h-7 w-7 text-[11px]" : size === "lg" ? "h-12 w-12 text-[15px]" : "h-10 w-10 text-[13px]",
-      )}
+      className={cn("inline-flex shrink-0 items-center justify-center rounded-xl font-bold", BADGE[p.tone], box, size === "sm" ? "text-[11px]" : size === "lg" ? "text-[15px]" : "text-[13px]")}
       title={p.label}
       aria-hidden="true"
       dir="ltr"
