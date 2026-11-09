@@ -1,11 +1,15 @@
 import { useMemo, useRef, useState, type ReactNode } from "react"
-import { Loader2, Plus, Trash2, Upload, Users } from "lucide-react"
+import { FileDown, Loader2, Plus, Trash2, Upload, Users } from "lucide-react"
+import { toast } from "sonner"
 import { useStore } from "@/data/store"
 import type { PbxLine, PbxOfficer, PbxReport } from "@/data/types"
 import { monthLabel } from "@/data/social"
 import { formatDate, formatNumber } from "@/lib/format"
 import { PbxFormatError, SMALL_SAMPLE, countMonth, gradeOf, lastDayOf, parsePbx, pct, rate, ranked, type Grade, type PbxFile } from "@/lib/pbx"
 import { cn } from "@/lib/utils"
+import { SAVE_ERROR, useDownloads } from "@/lib/downloads"
+import { exportPdf } from "@/report/pdf"
+import { pbxPages, pbxTitle } from "@/report/pbx"
 import { Gate } from "@/components/Gate"
 import { Banner, PageHeader, Panel, PanelHeader } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -32,6 +36,28 @@ export function PbxPage() {
   const report = reports.find((r) => r.month === pick) ?? reports[0] ?? null
   const prev = report ? reports.find((r) => r.month < report.month) ?? null : null
   const [sheet, setSheet] = useState<"upload" | "officers" | null>(null)
+  const downloads = useDownloads()
+  const [exporting, setExporting] = useState(false)
+  const pagesRef = useRef<HTMLDivElement>(null)
+
+  const exportReport = async () => {
+    if (!report || !downloads) return
+    setExporting(true)
+    try {
+      // let the hidden pages render before capturing them
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const blob = await exportPdf(pagesRef.current!, pbxTitle(report))
+      const name = `تقرير السنترال - ${monthLabel(report.month)}.pdf`
+      await downloads.save({ filename: name, data: blob })
+      toast.success("حُفظ ملف PDF", { description: name })
+    } catch (e) {
+      const err = e as { code?: string; message?: string }
+      if (err?.code === "declined") toast.message(SAVE_ERROR.declined)
+      else toast.error("لم يُحفظ الملف", { description: (err?.code && SAVE_ERROR[err.code]) || err?.message || "حدث خطأ أثناء إنشاء الملف." })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <>
@@ -55,6 +81,12 @@ export function PbxPage() {
                   ))}
                 </select>
               </>
+            )}
+            {report && downloads !== null && (
+              <button type="button" onClick={exportReport} disabled={exporting || !downloads} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold hover:bg-accent disabled:opacity-50">
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileDown className="h-4 w-4" aria-hidden="true" />}
+                تصدير PDF
+              </button>
             )}
             {canEdit && (
               <>
@@ -94,6 +126,11 @@ export function PbxPage() {
         )}
       </Gate>
 
+      {exporting && report && (
+        <div aria-hidden="true" style={{ position: "fixed", top: 0, left: -20000, pointerEvents: "none" }}>
+          <div ref={pagesRef}>{pbxPages(report, prev)}</div>
+        </div>
+      )}
       {canEdit && (
         <Sheet open={sheet !== null} onOpenChange={(o) => !o && setSheet(null)}>
           <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-2xl" dir="rtl">
