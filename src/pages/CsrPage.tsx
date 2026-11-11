@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { BookOpen, Building2, ChevronLeft, FileSpreadsheet, Handshake, HandHeart, LayoutDashboard, ListChecks, Loader2, Plus, ShieldCheck } from "lucide-react"
+import { BookOpen, Building2, ClipboardList, ChevronLeft, FileSpreadsheet, Handshake, HandHeart, LayoutDashboard, ListChecks, Loader2, Plus, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/data/store"
 import type { Branch, CsrInitiative, CsrPartner } from "@/data/types"
@@ -17,6 +17,7 @@ import { Pill, useSlidingPill } from "@/lib/motion"
 import { Kpi, ScoreCell, ScoreRing, StageChip, btn, fmt } from "./csr/ui"
 import { InitiativeDetail, InitiativeSheet, InitiativesTab } from "./csr/Initiatives"
 import { PartnersTab } from "./csr/Partners"
+import { PlansTab } from "./csr/Plans"
 
 /**
  * «المسؤولية المجتمعية»: the branches' initiatives under «دليل المسؤولية المجتمعية للفروع».
@@ -27,6 +28,7 @@ const TABS: { key: string; label: string; icon: typeof BookOpen }[] = [
   { key: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { key: "branches", label: "الفروع", icon: Building2 },
   { key: "initiatives", label: "المبادرات", icon: ListChecks },
+  { key: "plans", label: "خطط الفروع", icon: ClipboardList },
   { key: "partners", label: "الشراكات", icon: Handshake },
   { key: "reports", label: "التقارير", icon: FileSpreadsheet },
   { key: "guide", label: "الدليل", icon: BookOpen },
@@ -39,6 +41,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
   const tab = TABS.some((t) => t.key === tabProp) ? tabProp! : open ? "overview" : "guide"
   const [branchFilter, setBranchFilter] = useState("")
   const [editing, setEditing] = useState<CsrInitiative | "new" | null>(null)
+  const [prefill, setPrefill] = useState<CsrInitiative | null>(null)
   const setTab = (k: string) => go({ page: "csr", tab: k })
   const pill = useSlidingPill<HTMLUListElement>(tab)
   const openInit = (i: CsrInitiative) => go({ page: "csr", tab: "initiatives", id: i.id })
@@ -50,7 +53,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
       description="مبادرتان لكل فرع: واحدة من المسار التعليمي، وواحدة من المسار التربوي القيمي."
       actions={
         open && canEdit && tab !== "guide" ? (
-          <button type="button" onClick={() => setEditing("new")} className={btn.primary}>
+          <button type="button" onClick={() => (setPrefill(null), setEditing("new"))} className={btn.primary}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             مبادرة جديدة
           </button>
@@ -70,7 +73,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
   else if (!open) body = <SignIn />
   else
     body = (
-      <Gate needs={["branches", "csrInitiatives", "csrPartners"]}>
+      <Gate needs={tab === "plans" ? ["branches", "csrInitiatives", "csrPlans"] : ["branches", "csrInitiatives", "csrPartners"]}>
         {tab === "overview" && <OverviewTab onOpen={openInit} onBranch={(slug) => (setBranchFilter(slug), setTab("initiatives"))} />}
         {tab === "branches" && <BranchesTab onBranch={(slug) => (setBranchFilter(slug), setTab("initiatives"))} />}
         {tab === "initiatives" &&
@@ -79,6 +82,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
           ) : (
             <InitiativesTab branch={branchFilter} setBranch={setBranchFilter} onOpen={openInit} onNew={() => setEditing("new")} />
           ))}
+        {tab === "plans" && <PlansTab onOpen={openInit} onCreate={(i) => (setPrefill(i), setEditing("new"))} />}
         {tab === "partners" && <PartnersTab />}
         {tab === "reports" && <ReportsTab />}
       </Gate>
@@ -114,7 +118,7 @@ export function CsrPage({ tab: tabProp, id }: { tab?: string; id?: string }) {
       </nav>
       {body}
       {open && canEdit && editing && data.branches.length > 0 && (
-        <InitiativeSheet initial={editing === "new" ? null : editing} defaultBranch={branchFilter} onClose={() => setEditing(null)} onSaved={(i) => (setEditing(null), openInit(i))} />
+        <InitiativeSheet initial={editing === "new" ? null : editing} prefill={editing === "new" ? prefill : null} defaultBranch={branchFilter} onClose={() => (setEditing(null), setPrefill(null))} onSaved={(i) => (setEditing(null), setPrefill(null), openInit(i))} />
       )}
     </>
   )

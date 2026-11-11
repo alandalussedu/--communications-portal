@@ -199,7 +199,46 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports" | "csrPlans"
+
+/* ------------------------------------------------------------ branch CSR plans, read from «PROJECTS 2027» in each branch file */
+export type CsrPlanStep = { action: string; owner: string; date: string; dateIso: string | null; dateFlag: "before-year" | null; budget: string; budgetNum: number | null; item: string; tech: string; reply: string; row: number }
+export type CsrPlanProject = {
+  track: "edu" | "val" | "other"
+  heading: string
+  trackNote?: string
+  row: number
+  name: string
+  nameLink: string | null
+  goal: string
+  description: string
+  audience: string
+  target: string
+  follow: { text: string; url: string | null } | null
+  indicators: string[]
+  approval: string | null
+  approvalNote: string
+  steps: CsrPlanStep[]
+  budget: number
+  empty: boolean
+}
+/** id = branch slug. Read-only copy of the sheet; nothing here is typed into the portal. */
+export type CsrPlan = {
+  id: string
+  branch: string
+  status: "ok" | "no-link"
+  note?: string
+  register: string
+  readAt: string
+  fileId?: string
+  sheetId?: number
+  sheetTitle?: string
+  sourceUrl?: string
+  summary?: { projects: number | null; approved: number | null; notApproved: number | null; measure: string | null } | null
+  kpi?: { col: string; label: string; value: string | null }[]
+  projects?: CsrPlanProject[]
+  issues?: string[]
+}
 
 /* ------------------------------------------------------------ PBX (3CX) monthly response of branch communication officers */
 /** A branch communication officer and the extension(s) central transfers ring. id = a stable slug. */
@@ -469,6 +508,8 @@ export type CsrInitiative = {
   /** the evidence was late (over two weeks) when the decision was taken */
   decidedLate?: boolean
   notes: string
+  /** «slug:track» when created from a branch plan */
+  fromPlan?: string
   createdAt: string
   updatedAt: string
 }

@@ -353,9 +353,9 @@ const numOrNull = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null
 }
 
-export function InitiativeSheet({ initial, defaultBranch, onClose, onSaved }: { initial: CsrInitiative | null; defaultBranch: string; onClose: () => void; onSaved: (i: CsrInitiative) => void }) {
+export function InitiativeSheet({ initial, prefill, defaultBranch, onClose, onSaved }: { initial: CsrInitiative | null; prefill?: CsrInitiative | null; defaultBranch: string; onClose: () => void; onSaved: (i: CsrInitiative) => void }) {
   const { data, saveCsrInitiative, saveCsrPartner } = useStore()
-  const [f, setF] = useState<CsrInitiative>(() => initial ?? blankInitiative(defaultBranch || ""))
+  const [f, setF] = useState<CsrInitiative>(() => initial ?? prefill ?? blankInitiative(defaultBranch || ""))
   const [nums, setNums] = useState(() => ({
     beneficiaries: f.beneficiaries?.toString() ?? "", students: f.students?.toString() ?? "", staff: f.staff?.toString() ?? "", hours: f.hours?.toString() ?? "", cost: f.cost?.toString() ?? "",
   }))

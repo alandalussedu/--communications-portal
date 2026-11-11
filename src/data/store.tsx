@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { PbxOfficer, PbxReport, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { CsrPlan, PbxOfficer, PbxReport, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -75,10 +75,11 @@ export type Data = {
   csrPartners: CsrPartner[]
   pbxOfficers: PbxOfficer[]
   pbxReports: PbxReport[]
+  csrPlans: CsrPlan[]
 }
 
-const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [] }
-const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports"]
+const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [], csrPlans: [] }
+const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans"]
 const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Record<CollectionName, boolean>
 
 /**
@@ -86,7 +87,7 @@ const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Re
  * (`{ enc }`) and only become readable after the vault is opened. A document
  * still in plain form (before the move to encryption) passes through as is.
  */
-export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports"]
+export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans"]
 const PROTECTED_SET = new Set<CollectionName>(PROTECTED)
 
 export type VaultStatus = "loading" | "none" | "locked" | "unlocked" | "unsupported"
