@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { CsrPlan, PbxOfficer, PbxReport, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { BranchContacts, CsrPlan, PbxOfficer, PbxReport, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -76,9 +76,11 @@ export type Data = {
   pbxOfficers: PbxOfficer[]
   pbxReports: PbxReport[]
   csrPlans: CsrPlan[]
+  /** «دليل أرقام الفروع»: the settings document «contacts» (public) */
+  contacts: BranchContacts | null
 }
 
-const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [], csrPlans: [] }
+const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [], csrPlans: [], contacts: null }
 const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans"]
 const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Record<CollectionName, boolean>
 
@@ -190,7 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   /** Puts a collection's rows into the data, opening encrypted ones when the key is available. */
   const ingest = useCallback(async (name: CollectionName, rows: Row[]) => {
     if (!PROTECTED_SET.has(name)) {
-      setData((prev) => ({ ...prev, [name]: sortData(name, rows) }))
+      setData((prev) => ({ ...prev, [name]: sortData(name, rows), ...(name === "settings" ? { contacts: ((rows as { id: string }[]).find((r) => r.id === "contacts") ?? null) as BranchContacts | null } : {}) }))
       setLoaded((prev) => (prev[name] ? prev : { ...prev, [name]: true }))
       return
     }
@@ -216,7 +218,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }),
     )
     if (seqRef.current[name] !== seq) return
-    setData((prev) => ({ ...prev, [name]: sortData(name, opened.filter(Boolean) as Row[]) }))
+    setData((prev) => ({ ...prev, [name]: sortData(name, opened.filter(Boolean) as Row[]), ...(name === "settings" ? { contacts: ((opened.filter(Boolean) as { id: string }[]).find((r) => r.id === "contacts") ?? null) as BranchContacts | null } : {}) }))
     setHiddenBy((prev) => ({ ...prev, [name]: { hidden, failed } }))
     setLoaded((prev) => (prev[name] ? prev : { ...prev, [name]: true }))
   }, [])

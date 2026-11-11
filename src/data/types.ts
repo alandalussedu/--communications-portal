@@ -152,6 +152,12 @@ export type SyncEvent = {
   url: string | null
 }
 
+/* ------------------------------------------------------------ «دليل أرقام الفروع» (public; settings/contacts) */
+export type ContactItem = { dept: string; label: string; numbers: string[] }
+export type ContactGroup = { track: string; gender: string; shared: ContactItem[]; stages: { stage: string; items: ContactItem[] }[] }
+export type ContactBranch = { name: string; short: string; slug: string | null; order: number; main: string | null; general: ContactItem[]; groups: ContactGroup[]; empty: boolean }
+export type BranchContacts = { id: "contacts"; kind: "branchContacts"; title: string; source: string; readAt: string; depts: { key: string; label: string }[]; branches: ContactBranch[]; issues: { branch: string; cell: string; dept: string; reason: string }[] }
+
 export type Settings = {
   id: string
   /** Days after the last successful read before a branch counts as not updated. */

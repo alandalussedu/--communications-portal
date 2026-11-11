@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { ArrowLeft, BookOpen, ClipboardList, FileSignature, Lock, Palette, Search, X } from "lucide-react"
+import { ArrowLeft, BookOpen, ClipboardList, FileSignature, Lock, Palette, PhoneCall, Search, X } from "lucide-react"
 import { useRouter } from "@/lib/router"
 import { useStore } from "@/data/store"
 import { LIBRARY_SECTIONS, type FileItem, type LibrarySection } from "@/data/types"
@@ -12,6 +12,7 @@ import { FileRow, openLibrary } from "./OverviewPage"
 import { UpcomingStrip } from "./CalendarPage"
 import { HomeHero } from "@/components/HomeHero"
 import { QuickLinks, useQuickLinkItems } from "@/components/QuickLinks"
+import { CONTACTS_Q } from "./ContactsPage"
 
 const SECTION_ICON: Record<LibrarySection, typeof Palette> = { identity: Palette, guides: BookOpen, forms: FileSignature }
 const SECTION_TONE: Record<LibrarySection, string> = { identity: "bg-gold-soft text-gold-ink", guides: "bg-sky-soft text-sky-ink", forms: "bg-secondary text-secondary-foreground" }
@@ -93,15 +94,12 @@ export function HomePage() {
         )}
       </HomeHero>
 
-      {/* 1b · quick links beside the coming events */}
-      <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="order-2 lg:order-1">
-          <UpcomingStrip className="" />
-        </div>
-        <div className="order-1 lg:order-2">
-          <QuickLinks />
-        </div>
+      {/* 1b · the branch phone directory beside the quick links, then the coming events */}
+      <div className="mt-5 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <ContactsCard />
+        <QuickLinks />
       </div>
+      <UpcomingStrip className="mt-5" />
 
       <Gate needs={["files", "settings"]}>
         {/* 2 · library sections */}
@@ -175,5 +173,52 @@ export function HomePage() {
         </div>
       </Gate>
     </>
+  )
+}
+
+/** The big doorway to «دليل أرقام الفروع»: open to everyone, with a search that carries over. */
+function ContactsCard() {
+  const { data } = useStore()
+  const { go } = useRouter()
+  const [q, setQ] = useState("")
+  const branches = data.contacts?.branches.filter((b) => !b.empty).length ?? 0
+  const open = (query: string) => {
+    try {
+      sessionStorage.setItem(`hub:${CONTACTS_Q}`, JSON.stringify(query))
+    } catch {
+      /* storage blocked: the page opens without the query */
+    }
+    go({ page: "contacts" })
+  }
+  return (
+    <section className="rise relative flex flex-col justify-between gap-4 overflow-hidden rounded-2xl border bg-card p-5 sm:p-6 lg:last:col-span-2" aria-labelledby="home-contacts">
+      <span className="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-gold-soft opacity-60" aria-hidden="true" />
+      <div className="relative flex items-start gap-4">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+          <PhoneCall className="h-7 w-7" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h2 id="home-contacts" className="text-[22px] font-extrabold">دليل أرقام الفروع</h2>
+          <p className="text-[15px] text-muted-foreground">القبول والتسجيل، التواصل المؤسسي، المالية، والنقل لكل فرع ومرحلة{branches ? ` · ${formatNumber(branches)} فرعًا` : ""}.</p>
+        </div>
+      </div>
+      <form
+        className="relative flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          open(q.trim())
+        }}
+      >
+        <label htmlFor="home-contacts-q" className="sr-only">ابحث عن رقم</label>
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute start-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input id="home-contacts-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="مثال: مكة مالية" className="h-12 w-full rounded-xl border bg-background pe-3 ps-11 text-[16px] outline-none focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/20" />
+        </div>
+        <button type="submit" className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-foreground hover:bg-primary/90">
+          {q.trim() ? "ابحث" : "فتح الدليل"}
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </form>
+    </section>
   )
 }

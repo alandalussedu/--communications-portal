@@ -18,6 +18,7 @@ import { MembersPage } from "@/pages/MembersPage"
 import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { PbxPage } from "@/pages/PbxPage"
+import { ContactsPage } from "@/pages/ContactsPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
 import { useEffect } from "react"
 import { useStore } from "@/data/store"
@@ -51,6 +52,8 @@ function Pages() {
       return <CalendarPage key={nonce} />
     case "overview":
       return <HomePage key={nonce} />
+    case "contacts":
+      return <ContactsPage key={nonce} />
     case "csr":
       return <CsrPage key="csr" tab={route.tab} id={route.id} />
     case "members":
