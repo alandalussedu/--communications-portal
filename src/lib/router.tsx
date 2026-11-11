@@ -17,6 +17,8 @@ export type Route =
   | { page: "complaints" }
   | { page: "pbx" }
   | { page: "contacts" }
+  /** view: undefined | "admin" | "c-<campus id>" | "q-<search text>" */
+  | { page: "transport"; view?: string }
   | { page: "csr"; tab?: string; id?: string }
 
 const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints", "pbx", "contacts"] as const
@@ -28,6 +30,7 @@ export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch",
 export function routeToken(r: Route): string {
   if (r.page === "remedial") return r.slug ? `remedial-${r.slug}` : "remedial"
   if (r.page === "csr") return r.id ? `csr-i-${r.id}` : r.tab ? `csr-${r.tab}` : "csr"
+  if (r.page === "transport") return r.view ? `transport-${encodeURIComponent(r.view)}` : "transport"
   if (r.page === "library") return r.section ? `library-${r.section}` : "library"
   return r.page === "branch" ? `branch-${r.slug}` : r.page
 }
@@ -40,6 +43,14 @@ function parse(hash: string): Route {
   if (t.startsWith("csr-i-") && t.length > 6) return { page: "csr", tab: "initiatives", id: t.slice(6) }
   if (t.startsWith("csr-") && t.length > 4) return { page: "csr", tab: t.slice(4) }
   if (t === "csr") return { page: "csr" }
+  if (t === "transport") return { page: "transport" }
+  if (t.startsWith("transport-") && t.length > 10) {
+    try {
+      return { page: "transport", view: decodeURIComponent(t.slice(10)) }
+    } catch {
+      return { page: "transport" }
+    }
+  }
   if ((TOKENS as readonly string[]).includes(t)) return { page: t as (typeof TOKENS)[number] } as Route
   return { page: "overview" }
 }

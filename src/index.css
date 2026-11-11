@@ -206,3 +206,17 @@
   color-scheme: light;
   color: hsl(var(--foreground));
 }
+
+/* «النقل المدرسي»: map markers and the print layout of a campus list */
+.tp-city { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 12px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); font: 700 13px/1 Tajawal, sans-serif; box-shadow: 0 4px 14px rgb(20 20 80 / 0.18); cursor: pointer; direction: rtl; }
+.tp-city span { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 999px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-size: 12px; }
+.tp-city.on { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+.tp-city.on span { background: hsl(var(--gold)); color: #1b1b3a; }
+.tp-pin { width: 18px; height: 18px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: hsl(var(--gold)); border: 2px solid #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 0.35); }
+.tp-print-area { display: none; }
+@media print {
+  body.tp-printing > *:not(.tp-print-area) { display: none !important; }
+  body.tp-printing .tp-print-area { display: block; }
+  body.tp-printing .tp-print-area .report-page { break-after: page; box-shadow: none; }
+  @page { size: A4; margin: 0; }
+}

@@ -19,6 +19,7 @@ import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { PbxPage } from "@/pages/PbxPage"
 import { ContactsPage } from "@/pages/ContactsPage"
+import { TransportPage } from "@/pages/TransportPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
 import { useEffect } from "react"
 import { useStore } from "@/data/store"
@@ -54,6 +55,8 @@ function Pages() {
       return <HomePage key={nonce} />
     case "contacts":
       return <ContactsPage key={nonce} />
+    case "transport":
+      return <TransportPage key="transport" view={route.view} />
     case "csr":
       return <CsrPage key="csr" tab={route.tab} id={route.id} />
     case "members":

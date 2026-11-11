@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { type ReactNode as RN } from "react"
-import { BarChart3, CalendarDays, FolderOpen, HandHeart, House, Loader2, Lock, LockOpen, Megaphone, PhoneCall, UserRound } from "lucide-react"
+import { BarChart3, BusFront, CalendarDays, FolderOpen, HandHeart, House, Loader2, Lock, LockOpen, Megaphone, PhoneCall, UserRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LOCKED_PAGES, useRouter, type Route } from "@/lib/router"
 import { useStore } from "@/data/store"
@@ -21,6 +21,7 @@ const NAV: { page: Route["page"]; label: string; short: string; icon: typeof Hou
   { page: "social", label: "التواصل الاجتماعي", short: "التواصل", icon: Megaphone },
   { page: "csr", label: "المسؤولية المجتمعية", short: "المسؤولية", icon: HandHeart },
   { page: "contacts", label: "دليل الأرقام", short: "الأرقام", icon: PhoneCall },
+  { page: "transport", label: "النقل المدرسي", short: "النقل", icon: BusFront },
   { page: "indicators", label: "الأداء والتطوير", short: "الأداء", icon: BarChart3, also: LOCKED_PAGES, locked: true },
 ]
 
@@ -149,7 +150,7 @@ export function Shell({ children }: { children: ReactNode }) {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="أقسام المنصة"
       >
-        <ul ref={bar.ref} className="relative mx-auto grid max-w-[700px] grid-cols-7">
+        <ul ref={bar.ref} className="relative mx-auto grid max-w-[760px] grid-cols-8">
           <Pill box={bar.box && { ...bar.box, x: bar.box.x + (bar.box.w - 48) / 2, y: 8, w: 48, h: 32 }} ready={bar.ready} className="rounded-full bg-primary/10" />
           {NAV.map((n) => {
             const active = route.page === n.page || n.also?.includes(route.page)
