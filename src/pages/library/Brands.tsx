@@ -34,7 +34,7 @@ export function brandOf(f: FileItem): { brand: string; sub: string | null } | nu
 
 const USE_GROUPS: [string, RegExp][] = [
   ["الشعار والحركة والخط", /شعار|logo|تحريك|animation|الخط|font/i],
-  ["القرطاسية والمطبوعات", /الورق|الظروف|envelope|المفكرة|notepad|الملفات|folder|الشهادات|certificate|bc_template|بطاقة عمل|id template/i],
+  ["الورق والمطبوعات", /الورق|الظروف|envelope|المفكرة|notepad|الملفات|folder|الشهادات|certificate|bc_template|بطاقة عمل|id template/i],
   ["العروض والتواصل الاجتماعي", /بوربوينت|ppt|قالب الصور|التهنئة|مواقع التواصل|الفيديو/i],
   ["اللوحات والمرافق والنقل", /لوحات|اللوحات|لوحة|المرافق|الباص/i],
 ]
