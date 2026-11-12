@@ -152,7 +152,7 @@ export function BrandView({ brand, sub, items, canEdit, onBack, onSub, onEdit }:
   )
 }
 
-function FileRow({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdit: (f: FileItem) => void }) {
+export function FileRow({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdit: (f: FileItem) => void }) {
   const Icon = f.kind === "folder" ? Folder : f.kind === "file" ? FileText : FileType2
   const dl = downloadUrl(f.url)
   return (
@@ -186,5 +186,31 @@ function FileRow({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdit
         )}
       </span>
     </li>
+  )
+}
+
+/** A library section shown as compact rows, one panel per category (used in «كل الأقسام»). */
+export function SectionRows({ title, hint, items, canEdit, onEdit, onMore }: { title: string; hint?: string; items: FileItem[]; canEdit: boolean; onEdit: (f: FileItem) => void; onMore?: () => void }) {
+  const byGroup = new Map<string, FileItem[]>()
+  for (const f of items) byGroup.set(f.group || "عام", [...(byGroup.get(f.group || "عام") ?? []), f])
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[22px] font-extrabold">{title} <span className="num text-[15px] font-medium text-muted-foreground">· {formatNumber(items.length)}</span></h2>
+        {onMore && <button type="button" onClick={onMore} className="text-[15px] font-bold text-primary hover:underline">فتح القسم ←</button>}
+      </div>
+      {hint && <p className="-mt-2 text-[14px] text-muted-foreground">{hint}</p>}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        {[...byGroup].map(([g, l]) => (
+          <Panel key={g} className="rise">
+            <h3 className="flex items-center justify-between border-b px-4 py-3 text-[16px] font-extrabold">
+              {g}
+              <span className="num text-[13px] font-medium text-muted-foreground">{formatNumber(l.length)}</span>
+            </h3>
+            <ul className="p-1.5">{l.map((f) => <FileRow key={f.id} f={f} canEdit={canEdit} onEdit={onEdit} />)}</ul>
+          </Panel>
+        ))}
+      </div>
+    </section>
   )
 }

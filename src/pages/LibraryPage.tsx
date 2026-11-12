@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { FileForm, SynonymsForm } from "@/components/admin"
 import { ShareButton } from "@/components/ShareButton"
 import { Pill as SlidePill, useSlidingPill } from "@/lib/motion"
-import { BRANDS, BrandGrid, BrandView } from "./library/Brands"
+import { BRANDS, BrandGrid, BrandView, SectionRows } from "./library/Brands"
 
 
 const STATUS_TONE: Record<FileStatus, Tone> = { معتمد: "ok", مسودة: "warn", مؤرشف: "neutral" }
@@ -183,14 +183,34 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
             )
           })}
         </div>
-        {sec === "identity" && !q.trim() && !classifying && visible.length > 0 ? (
+        {(sec === "identity" || sec === "all") && !q.trim() && !classifying && visible.length > 0 ? (
           (() => {
             const b = BRANDS.find((x) => x.key === brandKey)
-            const items = visible.map((h) => h.f)
-            return b ? (
-              <BrandView brand={b} sub={subKey} items={items} canEdit={canEdit} onBack={() => (setBrandKey(null), setSubKey(null))} onSub={setSubKey} onEdit={setEditing} />
-            ) : (
-              <BrandGrid items={items} onOpen={(k) => (setBrandKey(k), setSubKey(null))} />
+            const all = visible.map((h) => h.f)
+            const identity = all.filter((f) => f.section === "identity")
+            if (b) return <BrandView brand={b} sub={subKey} items={identity} canEdit={canEdit} onBack={() => (setBrandKey(null), setSubKey(null))} onSub={setSubKey} onEdit={setEditing} />
+            const grid = <BrandGrid items={identity} onOpen={(k) => (setBrandKey(k), setSubKey(null))} />
+            if (sec === "identity") return grid
+            // «كل الأقسام»: the brands first, then each other section as compact rows
+            return (
+              <div className="flex flex-col gap-8">
+                {identity.length > 0 && (
+                  <section className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h2 className="text-[22px] font-extrabold">الهوية البصرية <span className="num text-[15px] font-medium text-muted-foreground">· {formatNumber(identity.length)}</span></h2>
+                    </div>
+                    {grid}
+                  </section>
+                )}
+                {LIBRARY_SECTIONS.filter((x) => x.key !== "identity").map((x) => {
+                  const l = all.filter((f) => f.section === x.key)
+                  return l.length ? <SectionRows key={x.key} title={x.label} items={l} canEdit={canEdit} onEdit={setEditing} onMore={() => setSec(x.key)} /> : null
+                })}
+                {(() => {
+                  const l = all.filter((f) => !f.section)
+                  return l.length ? <SectionRows title="غير مصنّف" hint="عناصر لم يُحدَّد قسمها بعد." items={l} canEdit={canEdit} onEdit={setEditing} /> : null
+                })()}
+              </div>
             )
           })()
         ) : visible.length === 0 ? (
