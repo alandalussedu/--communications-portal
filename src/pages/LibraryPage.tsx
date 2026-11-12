@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { FileForm, SynonymsForm } from "@/components/admin"
 import { ShareButton } from "@/components/ShareButton"
 import { Pill as SlidePill, useSlidingPill } from "@/lib/motion"
+import { BRANDS, BrandGrid, BrandView } from "./library/Brands"
 
 
 const STATUS_TONE: Record<FileStatus, Tone> = { معتمد: "ok", مسودة: "warn", مؤرشف: "neutral" }
@@ -33,6 +34,8 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
   const [savingSec, setSavingSec] = useState(false)
   const [q, setQ] = usePersistent("lib-q", "")
   const [view, setView] = usePersistent<"cards" | "table">("lib-view", "cards")
+  const [brandKey, setBrandKey] = usePersistent<string | null>("lib-brand", null)
+  const [subKey, setSubKey] = usePersistent<string | null>("lib-brand-sub", null)
   const [editing, setEditing] = useState<FileItem | "new" | "synonyms" | null>(null)
 
   const files = data.files
@@ -180,7 +183,17 @@ export function LibraryPage({ section: routeSection }: { section?: string }) {
             )
           })}
         </div>
-        {visible.length === 0 ? (
+        {sec === "identity" && !q.trim() && !classifying && visible.length > 0 ? (
+          (() => {
+            const b = BRANDS.find((x) => x.key === brandKey)
+            const items = visible.map((h) => h.f)
+            return b ? (
+              <BrandView brand={b} sub={subKey} items={items} canEdit={canEdit} onBack={() => (setBrandKey(null), setSubKey(null))} onSub={setSubKey} onEdit={setEditing} />
+            ) : (
+              <BrandGrid items={items} onOpen={(k) => (setBrandKey(k), setSubKey(null))} />
+            )
+          })()
+        ) : visible.length === 0 ? (
           <Panel>
             <EmptyState
               title="لا ملفات تطابق البحث"
