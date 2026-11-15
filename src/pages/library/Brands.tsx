@@ -4,13 +4,14 @@
  * الأهلية. Brands come from each item's category («الهوية · …»); the use groups
  * are matched from the file title, and anything unmatched shows under «أخرى».
  */
-import { ArrowRight, BookOpen, Download, FileText, FileType2, Folder, Pencil } from "lucide-react"
+import { ArrowRight, BookOpen, Copy, Download, FileText, FileType2, Folder, Pencil } from "lucide-react"
 import type { FileItem } from "@/data/types"
 import { formatNumber, normalize } from "@/lib/format"
 import { downloadUrl } from "@/lib/search"
 import { cn } from "@/lib/utils"
-import { CopyButton, OpenLink, Panel, Pill } from "@/components/common"
+import { OpenLink, Panel, Pill } from "@/components/common"
 import { ShareButton } from "@/components/ShareButton"
+import { canShare } from "@/lib/native"
 
 const LOGO = (f: string) => `${import.meta.env.BASE_URL}brands/${f}.webp`
 
@@ -131,61 +132,90 @@ export function BrandView({ brand, sub, items, canEdit, onBack, onSub, onEdit }:
       {list.length === 0 ? (
         <Panel><p className="p-6 text-center text-muted-foreground">لا عناصر هنا بعد.</p></Panel>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-          {guide && !guide.url && (
-            <Panel className="lg:col-span-2"><ul className="p-1.5"><FileRow f={guide} canEdit={canEdit} onEdit={onEdit} /></ul></Panel>
-          )}
-          {groups.filter(([, l]) => l.length).map(([name, l]) => (
-            <Panel key={name} className="rise">
-              <h3 className="flex items-center justify-between border-b px-4 py-3 text-[16px] font-extrabold">
-                {name}
-                <span className="num text-[13px] font-medium text-muted-foreground">{formatNumber(l.length)}</span>
-              </h3>
-              <ul className="p-1.5">
-                {l.map((f) => <FileRow key={f.id} f={f} canEdit={canEdit} onEdit={onEdit} />)}
-              </ul>
-            </Panel>
-          ))}
+        <div className="flex flex-col gap-4">
+          {guide && !guide.url && <FileGroup title="دليل الهوية" items={[guide]} canEdit={canEdit} onEdit={onEdit} />}
+          {groups.filter(([, l]) => l.length).map(([name, l]) => <FileGroup key={name} title={name} items={l} canEdit={canEdit} onEdit={onEdit} />)}
         </div>
       )}
     </div>
   )
 }
 
+/** One group: a full-width panel with a grid of equal tiles, so rows line up and nothing leaves gaps. */
+export function FileGroup({ title, items, canEdit, onEdit }: { title: string; items: FileItem[]; canEdit: boolean; onEdit: (f: FileItem) => void }) {
+  return (
+    <Panel className="rise">
+      <h3 className="flex items-center gap-2 border-b px-4 py-3 text-[16px] font-extrabold">
+        {title}
+        <span className="num rounded-full bg-muted px-2 text-[12px] font-medium leading-5 text-muted-foreground">{formatNumber(items.length)}</span>
+      </h3>
+      <ul className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {items.map((f) => <FileRow key={f.id} f={f} canEdit={canEdit} onEdit={onEdit} />)}
+      </ul>
+    </Panel>
+  )
+}
+
 export function FileRow({ f, canEdit, onEdit }: { f: FileItem; canEdit: boolean; onEdit: (f: FileItem) => void }) {
   const Icon = f.kind === "folder" ? Folder : f.kind === "file" ? FileText : FileType2
   const dl = downloadUrl(f.url)
+  const iconBtn = "inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
   return (
-    <li className="flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-accent/50">
-      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", !f.url ? "bg-muted text-muted-foreground" : f.kind === "folder" ? "bg-gold-soft text-gold-ink" : "bg-sky-soft text-sky-ink")}>
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium leading-snug">{f.title}</span>
-        {f.status && f.status !== "معتمد" && <Pill tone="warn">{f.status}</Pill>}
-      </span>
-      <span className="flex shrink-0 items-center gap-0.5">
-        {f.url ? (
-          <>
-            <span className="hidden sm:inline-flex"><CopyButton text={f.url} /></span>
-            <ShareButton title={f.title} url={f.url} className="w-8 justify-center px-0 [&>span]:sr-only" />
-            {dl && (
-              <a href={dl.href} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent" aria-label={`${dl.label}: ${f.title}`} title={dl.label}>
-                <Download className="h-4 w-4" />
-              </a>
-            )}
-            <OpenLink href={f.url} variant="solid" size="sm">فتح</OpenLink>
-          </>
-        ) : (
-          <Pill tone="warn">بانتظار الرابط</Pill>
-        )}
+    <li className="flex h-full flex-col rounded-xl border bg-card transition-colors hover:border-primary/40">
+      <div className="flex flex-1 items-start gap-3 p-3">
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", !f.url ? "bg-muted text-muted-foreground" : f.kind === "folder" ? "bg-gold-soft text-gold-ink" : "bg-sky-soft text-sky-ink")}>
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 min-h-[2.6em] text-[15px] font-bold leading-snug" title={f.title}>{f.title}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            {f.kind === "folder" ? "مجلد" : "ملف"}
+            {f.status && f.status !== "معتمد" && <Pill tone="warn">{f.status}</Pill>}
+          </span>
+        </span>
         {canEdit && (
-          <button type="button" onClick={() => onEdit(f)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent" aria-label={`تعديل ${f.title}`}>
+          <button type="button" onClick={() => onEdit(f)} className={cn(iconBtn, "-me-1 -mt-1 h-8 w-8")} aria-label={`تعديل ${f.title}`}>
             <Pencil className="h-4 w-4" />
           </button>
         )}
-      </span>
+      </div>
+      <div className="flex items-center gap-1 border-t px-2 py-2">
+        {f.url ? (
+          <>
+            <OpenLink href={f.url} variant="solid" size="sm" className="flex-1">فتح</OpenLink>
+            <CopyIcon text={f.url} className={iconBtn} />
+            {canShare() ? <ShareButton title={f.title} url={f.url} className={cn(iconBtn, "px-0 [&>span]:sr-only")} /> : <span className="h-9 w-9" aria-hidden="true" />}
+            {/* the download slot is kept even when empty so every tile's buttons line up */}
+            {dl ? (
+              <a href={dl.href} target="_blank" rel="noopener noreferrer" className={iconBtn} aria-label={`${dl.label}: ${f.title}`} title={dl.label}>
+                <Download className="h-4 w-4" />
+              </a>
+            ) : (
+              <span className="h-9 w-9" aria-hidden="true" />
+            )}
+          </>
+        ) : (
+          <span className="flex h-9 flex-1 items-center justify-center"><Pill tone="warn">بانتظار الرابط</Pill></span>
+        )}
+      </div>
     </li>
+  )
+}
+
+function CopyIcon({ text, className }: { text: string; className: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        const b = e.currentTarget
+        navigator.clipboard?.writeText(text).then(() => { b.dataset.done = "1"; setTimeout(() => delete b.dataset.done, 1500) }, () => {})
+      }}
+      className={cn(className, "data-[done]:text-ok")}
+      aria-label="نسخ الرابط"
+      title="نسخ الرابط"
+    >
+      <Copy className="h-4 w-4" />
+    </button>
   )
 }
 
@@ -200,16 +230,8 @@ export function SectionRows({ title, hint, items, canEdit, onEdit, onMore }: { t
         {onMore && <button type="button" onClick={onMore} className="text-[15px] font-bold text-primary hover:underline">فتح القسم ←</button>}
       </div>
       {hint && <p className="-mt-2 text-[14px] text-muted-foreground">{hint}</p>}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        {[...byGroup].map(([g, l]) => (
-          <Panel key={g} className="rise">
-            <h3 className="flex items-center justify-between border-b px-4 py-3 text-[16px] font-extrabold">
-              {g}
-              <span className="num text-[13px] font-medium text-muted-foreground">{formatNumber(l.length)}</span>
-            </h3>
-            <ul className="p-1.5">{l.map((f) => <FileRow key={f.id} f={f} canEdit={canEdit} onEdit={onEdit} />)}</ul>
-          </Panel>
-        ))}
+      <div className="flex flex-col gap-4">
+        {[...byGroup].map(([g, l]) => <FileGroup key={g} title={g} items={l} canEdit={canEdit} onEdit={onEdit} />)}
       </div>
     </section>
   )
