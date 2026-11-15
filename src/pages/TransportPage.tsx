@@ -18,7 +18,6 @@ import { campusPages } from "@/report/transport"
 import { BUS_IMAGE } from "./transport/busImage"
 import type { MapCity, MapPin as Pin } from "./transport/CityMap"
 
-const Bus3D = lazy(() => import("./transport/Bus3D"))
 const CityMap = lazy(() => import("./transport/CityMap"))
 const TransportAdmin = lazy(() => import("./transport/Admin"))
 
@@ -127,29 +126,27 @@ function PublicView({ data, loading, error, view, go }: { data: TransportData | 
 
   return (
     <>
-      {/* 1 · hero */}
-      <section className="rise relative mt-5 overflow-hidden rounded-3xl border bg-gradient-to-bl from-card via-card to-sky-soft/60">
-        <div className="grid grid-cols-1 items-center gap-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <div className="relative z-10 px-6 pb-2 pt-8 sm:px-10 lg:py-12">
+      {/* 1 · hero: the company bus, then the title */}
+      <section className="rise relative mt-5 overflow-hidden rounded-3xl border bg-card">
+        <img src={BUS_IMAGE} alt="حافلة النقل المدرسي لشركة الأندلس التعليمية" className="block aspect-[1600/605] w-full object-cover" />
+        <div className="flex flex-wrap items-end justify-between gap-4 px-6 py-6 sm:px-10 sm:py-8">
+          <div className="min-w-0 max-w-2xl">
             {data && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1 text-[13px] font-bold text-primary-foreground">
                 <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                 العام الدراسي <span className="num">{data.year}</span>م
               </span>
             )}
-            <h1 className="mt-4 text-[40px] font-extrabold leading-tight text-primary sm:text-[52px]">النقل المدرسي</h1>
-            <p className="mt-1 text-[20px] font-bold sm:text-[22px]">الأحياء المعتمدة لخدمة النقل المدرسي</p>
-            <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-muted-foreground">
+            <h1 className="mt-3 text-[36px] font-extrabold leading-tight text-primary sm:text-[46px]">النقل المدرسي</h1>
+            <p className="mt-1 text-[19px] font-bold sm:text-[21px]">الأحياء المعتمدة لخدمة النقل المدرسي</p>
+            <p className="mt-2 text-[16px] leading-relaxed text-muted-foreground">
               استكشف نطاق تغطية خدمة النقل المدرسي في مجمعات مدارس الأندلس التعليمية، وتعرّف على الأحياء المعتمدة{data ? <> للعام الدراسي <span className="num">{data.year}</span>م</> : ""}.
             </p>
-            <button type="button" onClick={() => searchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="mt-5 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[16px] font-bold text-primary-foreground shadow-sm hover:bg-primary/90">
-              <Search className="h-5 w-5" aria-hidden="true" />
-              ابحث عن حيّك
-            </button>
           </div>
-          <Suspense fallback={<img src={BUS_IMAGE} alt="حافلة النقل المدرسي لشركة الأندلس التعليمية" className="h-[260px] w-full object-cover sm:h-[380px]" />}>
-            <Bus3D className="h-[280px] w-full sm:h-[400px] lg:h-[440px]" />
-          </Suspense>
+          <button type="button" onClick={() => searchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[16px] font-bold text-primary-foreground shadow-sm hover:bg-primary/90">
+            <Search className="h-5 w-5" aria-hidden="true" />
+            ابحث عن حيّك
+          </button>
         </div>
       </section>
 

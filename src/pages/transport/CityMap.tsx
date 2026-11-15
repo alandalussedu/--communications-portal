@@ -14,6 +14,12 @@ export type MapCity = { id: string; name: string; campuses: number; districts: n
 export type MapPin = { id: string; name: string; lat: number; lng: number; note: string }
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty"
+/** backup when the main map does not answer: plain raster tiles, still tilted and turnable */
+const FALLBACK: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: { base: { type: "raster", tiles: ["https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19, attribution: "© OpenStreetMap contributors © CARTO" } },
+  layers: [{ id: "base", type: "raster", source: "base" }],
+}
 export const cityCenter = (name: string) => (CITY_GEO[name] ? ([CITY_GEO[name].lon, CITY_GEO[name].lat] as [number, number]) : null)
 
 export default function CityMap({ cities, active, pins, focus, onCity }: { cities: MapCity[]; active: string | null; pins: MapPin[]; focus: MapPin | null; onCity: (id: string) => void }) {
@@ -28,22 +34,38 @@ export default function CityMap({ cities, active, pins, focus, onCity }: { citie
     if (!host.current) return
     let m: maplibregl.Map
     try {
-      m = new maplibregl.Map({ container: host.current, style: STYLE, center: [42.5, 23.2], zoom: 4.3, pitch: 50, bearing: -12, attributionControl: { compact: true }, cooperativeGestures: true, maxPitch: 70 })
+      m = new maplibregl.Map({ container: host.current, style: STYLE, center: [42.5, 23.2], zoom: 4.3, pitch: 50, bearing: -12, attributionControl: { compact: true }, maxPitch: 70, scrollZoom: false })
     } catch {
       setState("failed")
       return
     }
     map.current = m
     m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left")
-    let ok = false
-    m.on("load", () => {
+    // the page keeps scrolling with the wheel until the visitor taps the map
+    const wake = () => m.scrollZoom.enable()
+    m.getCanvas().addEventListener("pointerdown", wake, { once: true })
+    let ok = false, fellBack = false
+    const fallBack = () => {
+      if (ok || fellBack) return
+      fellBack = true
+      m.setStyle(FALLBACK)
+      clearTimeout(t)
+      t = setTimeout(() => !ok && setState("failed"), 15000)
+    }
+    const ready = () => {
+      if (ok) return
       ok = true
+      clearTimeout(t)
       setState("ready")
-      // Arabic names where the tiles have them
-      for (const l of m.getStyle().layers ?? []) if (l.type === "symbol" && (l.layout as Record<string, unknown> | undefined)?.["text-field"]) m.setLayoutProperty(l.id, "text-field", ["coalesce", ["get", "name:ar"], ["get", "name"]])
-    })
-    m.on("error", () => !ok && setState("failed"))
-    const t = setTimeout(() => !ok && setState("failed"), 15000)
+      if (!fellBack)
+        // Arabic names where the vector tiles have them
+        for (const l of m.getStyle().layers ?? []) if (l.type === "symbol" && (l.layout as Record<string, unknown> | undefined)?.["text-field"]) m.setLayoutProperty(l.id, "text-field", ["coalesce", ["get", "name:ar"], ["get", "name"]])
+    }
+    m.on("load", ready)
+    m.on("style.load", () => fellBack && ready())
+    // the main style did not arrive: switch to the plain backup map
+    m.on("error", (e) => !ok && !fellBack && /style|Failed to fetch|NetworkError|404|403/i.test(String((e as { error?: Error }).error?.message ?? "")) && fallBack())
+    let t = setTimeout(fallBack, 9000)
     return () => {
       clearTimeout(t)
       m.remove()
@@ -93,7 +115,10 @@ export default function CityMap({ cities, active, pins, focus, onCity }: { citie
 
   return (
     <div className="relative h-[420px] overflow-hidden rounded-2xl border bg-muted sm:h-[520px]">
-      <div ref={host} className="absolute inset-0" dir="ltr" />
+      <div ref={host} className="absolute inset-0 h-full w-full" style={{ position: "absolute" }} dir="ltr" />
+      {state === "ready" && (
+        <p className="pointer-events-none absolute bottom-2 end-2 rounded-full bg-card/90 px-3 py-1 text-[12px] text-muted-foreground shadow-sm backdrop-blur">اسحب للتحريك · انقر ثم استخدم العجلة للتقريب</p>
+      )}
       {state !== "ready" && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/90 p-6 text-center text-[15px] text-muted-foreground">
           {state === "loading" ? "جارٍ تحميل الخريطة…" : "تعذّر تحميل الخريطة الآن. تحقّق من الاتصال ثم أعد فتح الصفحة؛ بقية الصفحة تعمل كما هي."}
