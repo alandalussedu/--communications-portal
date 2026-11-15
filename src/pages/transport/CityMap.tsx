@@ -5,10 +5,14 @@
  * pinned unless the database holds coordinates for it.
  */
 import { useEffect, useRef, useState } from "react"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url"
 import { CITY_GEO } from "@/data/csrMap"
 import { reducedMotion } from "@/lib/motion"
+
+// MapLibre 6 loads its worker beside its own module; the bundle moves it, so say where it is
+maplibregl.setWorkerUrl(workerUrl)
 
 export type MapCity = { id: string; name: string; campuses: number; districts: number }
 export type MapPin = { id: string; name: string; lat: number; lng: number; note: string }
