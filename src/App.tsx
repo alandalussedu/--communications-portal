@@ -6,6 +6,7 @@ import { Shell } from "@/components/Shell"
 import { IndicatorsHomePage } from "@/pages/OverviewPage"
 import { HomePage } from "@/pages/HomePage"
 import { LockedArea } from "@/components/LockedArea"
+import { signOut } from "@/lib/backend"
 import { BranchPage } from "@/pages/BranchPage"
 import { LibraryPage } from "@/pages/LibraryPage"
 import { SourcesPage } from "@/pages/SourcesPage"
@@ -45,6 +46,9 @@ function NativeBridge() {
 
 function Pages() {
   const { route, nonce } = useRouter()
+  const { member } = useStore()
+  // a «شاشة» account only drives the wall screen (public/screen/); the database gives it nothing else
+  if (member.enabled && member.role === "screen") return <ScreenAccountNotice />
   switch (route.page) {
     case "library":
       return <LibraryPage key={nonce} section={route.section} />
@@ -88,6 +92,19 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
     default:
       return <IndicatorsHomePage key={nonce} />
   }
+}
+
+function ScreenAccountNotice() {
+  return (
+    <section className="mx-auto mt-12 max-w-lg rounded-2xl border bg-card p-8 text-center">
+      <h1 className="text-[24px] font-bold">هذا الحساب مخصص لشاشة العرض</h1>
+      <p className="mt-2 text-[16px] text-muted-foreground">حساب «شاشة عرض» يفتح شاشة أعداد الطلاب فقط، ولا يرى أقسام المنصة.</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <a href="./screen/" className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90">فتح شاشة العرض</a>
+        <button type="button" onClick={() => void signOut()} className="inline-flex h-11 items-center rounded-full border px-5 text-[15px] hover:bg-accent">تسجيل الخروج</button>
+      </div>
+    </section>
+  )
 }
 
 export default function App() {

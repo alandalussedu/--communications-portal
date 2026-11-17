@@ -27,7 +27,7 @@ type Db = {
 }
 type UserNs = { canEdit(): Promise<boolean>; isOwner?(): Promise<boolean>; me?(): Promise<MemberInfo | null> }
 type MemberInfo = { name: string; role: MemberRole; must_change_password: boolean }
-export type MemberRole = "viewer" | "editor" | "owner"
+export type MemberRole = "viewer" | "editor" | "owner" | "screen"
 /** Signed-in member on the public site / app (Supabase). `enabled` is false inside Claude and in the read-only copy. */
 export type Member = { enabled: boolean; checked: boolean; role: MemberRole | null; name: string | null; mustChange: boolean; recheck(): void }
 type Row = { id: string } & Record<string, unknown>

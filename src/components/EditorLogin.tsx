@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { biometricSaved, biometricSignIn, biometry, forgetBiometricLogin, saveBiometricLogin, updateBiometricPassword, type Biometry } from "@/lib/native"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-export const ROLE_LABEL: Record<MemberRole, string> = { viewer: "مسؤول تواصل", editor: "محرر", owner: "مدير المنصة" }
+export const ROLE_LABEL: Record<MemberRole, string> = { viewer: "مسؤول تواصل", editor: "محرر", owner: "مدير المنصة", screen: "شاشة عرض" }
 const inputCls = "h-11 w-full rounded-md border border-input bg-card px-3 text-[16px] outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
 const primaryBtn = "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-[16px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
 

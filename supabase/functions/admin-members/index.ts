@@ -12,7 +12,7 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } })
 const fail = (error: string, status = 400) => json({ error }, status)
 
-const ROLES = ["viewer", "editor", "owner"] as const
+const ROLES = ["viewer", "editor", "owner", "screen"] as const
 const loginOf = (phone: string) => `m${phone}@members.andalus.invalid`
 
 /** 12 characters, no look-alikes (0/O, 1/l/I), grouped for reading aloud: Xxx-xxx-xxx-xxx */

@@ -9,11 +9,12 @@ import { EmptyState, LoadingBlock, PageHeader, Panel, Pill } from "@/components/
 import { ROLE_LABEL } from "@/components/EditorLogin"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-const ROLES: MemberRole[] = ["viewer", "editor", "owner"]
+const ROLES: MemberRole[] = ["viewer", "editor", "owner", "screen"]
 const ROLE_HINT: Record<MemberRole, string> = {
   viewer: "يرى كل الأقسام ومنها الأداء والتطوير، ولا يعدّل شيئًا",
   editor: "يرى ويعدّل محتوى المنصة",
   owner: "كالمحرر، ويدير المستخدمين",
+  screen: "شاشة عرض أعداد الطلاب فقط (مثل شاشة غرفة المدير)، لا ترى أي قسم آخر ولا تعدّل",
 }
 const inputCls = "h-11 w-full rounded-md border border-input bg-card px-3 text-[16px] outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
 const showPhone = (p: string) => (p.startsWith("966") ? "0" + p.slice(3) : p)
@@ -113,7 +114,7 @@ export function MembersPage() {
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 font-bold">
                       {r.name}
-                      <Pill tone={r.role === "viewer" ? "neutral" : r.role === "editor" ? "brand" : "gold"}>{ROLE_LABEL[r.role]}</Pill>
+                      <Pill tone={r.role === "viewer" ? "neutral" : r.role === "editor" ? "brand" : r.role === "screen" ? "sky" : "gold"}>{ROLE_LABEL[r.role]}</Pill>
                       {!r.active && <Pill tone="bad">موقوف</Pill>}
                       {r.active && r.must_change_password && <Pill tone="warn">لم يغيّر كلمة المرور المؤقتة</Pill>}
                     </p>

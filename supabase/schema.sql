@@ -5,6 +5,7 @@
 --   viewer : مسؤول تواصل، يرى كل الأقسام ومنها «الأداء والتطوير»، ولا يعدّل شيئًا
 --   editor : فريق إدارة التواصل، يرى ويعدّل
 --   owner  : مدير المنصة، كالمحرر ويدير المستخدمين (عبر الدالة admin-members)
+--   screen : شاشة عرض (مثل شاشة غرفة المدير)، تقرأ مجموعات screen_collection فقط ولا ترى أي قسم آخر
 -- الزائر بلا دخول يرى المجموعات العامة فقط.
 -- الحماية في الخادم: قواعد RLS أدناه هي ما يقرر من يقرأ ماذا، لا الواجهة.
 
@@ -22,12 +23,15 @@ create table if not exists public.members (
   user_id    uuid primary key references auth.users (id) on delete cascade,
   name       text not null,
   phone      text not null unique,
-  role       text not null default 'viewer' check (role in ('viewer', 'editor', 'owner')),
+  role       text not null default 'viewer' check (role in ('viewer', 'editor', 'owner', 'screen')),
   active     boolean not null default true,
   must_change_password boolean not null default true,
   created_at timestamptz not null default now(),
   created_by uuid
 );
+-- «create table if not exists» لا يغيّر قيد الأدوار في جدول موجود، فيُعاد إنشاؤه هنا
+alter table public.members drop constraint if exists members_role_check;
+alter table public.members add constraint members_role_check check (role in ('viewer', 'editor', 'owner', 'screen'));
 
 -- المجموعات التي يراها الجميع بلا دخول
 create or replace function public.public_collection(c text) returns boolean
@@ -39,11 +43,17 @@ create or replace function public.owner_collection(c text) returns boolean
   language sql immutable
   as $$ select c in ('studentCounts') $$;
 
+-- ما تقرؤه حسابات «شاشة» (للقراءة فقط)، ولا شيء غيره
+create or replace function public.screen_collection(c text) returns boolean
+  language sql immutable
+  as $$ select c in ('studentCounts') $$;
+
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public
   as $$ select role from public.members where user_id = auth.uid() and active $$;
 
-create or replace function public.is_viewer() returns boolean language sql stable as $$ select public.my_role() is not null $$;
+create or replace function public.is_viewer() returns boolean language sql stable as $$ select coalesce(public.my_role() in ('viewer', 'editor', 'owner'), false) $$;
+create or replace function public.is_screen() returns boolean language sql stable as $$ select coalesce(public.my_role() = 'screen', false) $$;
 create or replace function public.is_editor() returns boolean language sql stable as $$ select coalesce(public.my_role() in ('editor', 'owner'), false) $$;
 create or replace function public.is_owner()  returns boolean language sql stable as $$ select coalesce(public.my_role() = 'owner', false) $$;
 
@@ -76,7 +86,7 @@ drop policy if exists docs_read   on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
-create policy docs_read   on public.docs for select to anon, authenticated using ((public.public_collection(collection) or public.is_viewer()) and (not public.owner_collection(collection) or public.is_owner()));
+create policy docs_read   on public.docs for select to anon, authenticated using (((public.public_collection(collection) or public.is_viewer()) and (not public.owner_collection(collection) or public.is_owner())) or (public.is_screen() and public.screen_collection(collection)));
 create policy docs_insert on public.docs for insert to authenticated with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
 create policy docs_update on public.docs for update to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner())) with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
@@ -91,7 +101,7 @@ grant insert, update, delete on public.docs to authenticated;
 grant select on public.members to authenticated;
 revoke execute on function public.password_changed() from public, anon;
 grant execute on function public.password_changed() to authenticated;
-grant execute on function public.me(), public.is_viewer(), public.is_editor(), public.is_owner() to anon, authenticated;
+grant execute on function public.me(), public.is_viewer(), public.is_editor(), public.is_owner(), public.is_screen() to anon, authenticated;
 
 -- التحديث الحي. مع RLS لا تحمل أحداث الحذف إلا المفتاح (collection, id).
 alter table public.docs replica identity full;

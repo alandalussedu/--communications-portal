@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react"
-import { AlertTriangle, FileDown, FileSpreadsheet, Loader2, Lock, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, FileDown, FileSpreadsheet, Loader2, Lock, Monitor, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/data/store"
 import type { StudentCounts } from "@/data/types"
@@ -74,6 +74,10 @@ export function StudentsPage() {
         description={counts ? <>آخر سحب من نظام الحلول الخبيرة: <b className="text-foreground">{formatDate(counts.date)}</b></> : "مؤشرات أعداد الطلاب لكل فرع من سحب نظام الحلول الخبيرة."}
         actions={
           <>
+            <a href="./screen/" target="_blank" rel="noopener" title="شاشة غرفة المدير: تُفتح بحساب «شاشة عرض» أو بحسابك" className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] hover:bg-accent">
+              <Monitor className="h-4 w-4" aria-hidden="true" />
+              شاشة العرض
+            </a>
             <button type="button" onClick={() => setUploading(true)} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold text-primary hover:bg-accent">
               <Upload className="h-4 w-4" aria-hidden="true" />
               رفع ملف جديد
