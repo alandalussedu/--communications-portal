@@ -314,9 +314,17 @@
   }
   setInterval(tickClock, 10000)
 
+  async function allowed() {
+    var me = (await api('/rest/v1/rpc/me', { method: 'POST', body: {} })) || []
+    return me[0] && (me[0].role === 'screen' || me[0].role === 'owner') ? me[0] : null
+  }
+
   async function poll() {
     try {
-      if (await load()) render()
+      var changed = await load()
+      // nothing to show may mean the account was stopped from the members page
+      if (!counts && !(await allowed())) { saveSession(null); showLogin('هذا الحساب موقوف أو لم يعد حساب شاشة.'); return }
+      if (changed) render()
       else {
         var s = document.getElementById('state')
         if (s) { s.className = 'state'; s.textContent = 'آخر تحديث ' + timeFmt.format(lastOk) }
