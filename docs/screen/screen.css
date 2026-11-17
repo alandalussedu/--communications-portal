@@ -118,12 +118,46 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .ql { font: 800 21px Tajawal, sans-serif; } .ql.bad { fill: var(--bad); } .ql.ok { fill: var(--ok); }
 .bl { font: 700 20px Tajawal, sans-serif; fill: var(--fg); }
 
-/* footer: rotation progress and connection state */
-.ft { position: absolute; left: 48px; right: 48px; bottom: 10px; height: 18px; display: flex; align-items: center; }
-.prog { flex: 1; height: 5px; border-radius: 99px; background: var(--track); overflow: hidden; }
-.prog i { display: block; height: 100%; width: 0; background: var(--gold); }
-.state { font-size: 15px; color: var(--mut); margin-right: 16px; white-space: nowrap; }
+/* footer: how to pick a view, and the connection state */
+.hint { position: absolute; left: 48px; right: 48px; bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: var(--mut); }
+.hint kbd { font-family: inherit; display: inline-block; min-width: 26px; text-align: center; padding: 0 6px; margin: 0 3px; border-radius: 7px; background: var(--track); color: var(--fg); font-weight: 700; }
 .state.off { color: var(--warn); }
+.dot { cursor: pointer; }
+
+/* views 2–4 */
+.of { font-size: 26px; font-weight: 700; color: var(--mut); margin-right: 12px; }
+.hero .of { color: #c3c3e6; }
+.bv { margin-right: 14px; }
+.body.eq > .card { flex: 1; }
+.b3 .big { flex: 1.6; }
+.b4 > .card { flex: 1; } .b4 > .card:first-child { flex: 1.15; }
+.note { font-size: 17px; color: var(--mut); margin-top: 10px; line-height: 1.6; }
+.pl { display: inline-block; width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; overflow: hidden; vertical-align: middle; }
+.pl svg { width: 40px; height: 40px; display: block; }
+.brp { display: flex; align-items: center; }
+.brp .pl { margin-left: 14px; }
+.brp .n { width: 150px; flex-shrink: 0; font-size: 22px; font-weight: 700; white-space: nowrap; }
+.brp .n small { display: block; font-size: 15px; color: var(--mut); font-weight: 400; }
+.brp b { width: 130px; flex-shrink: 0; font-size: 24px; font-weight: 800; text-align: left; }
+.br.t .n { width: 260px; } .br.t b { width: 60px; }
+.tb { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+.list { list-style: none; display: flex; flex-direction: column; justify-content: space-around; flex: 1; }
+.list li { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.list li:last-child { border: 0; }
+.list li .pl { margin-left: 14px; }
+.list .nm { flex: 1; min-width: 0; }
+.list .nm b { display: block; font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list .nm span { font-size: 16px; color: var(--mut); }
+.list .v { font-size: 23px; font-weight: 800; margin-right: 12px; }
+.list .v.pos { color: var(--ok); }
+.miss li .nm b { color: var(--warn); }
+.ct { width: 100%; border-collapse: collapse; font-size: 20px; }
+.ct th { font-size: 16px; color: var(--mut); font-weight: 700; text-align: right; padding: 0 10px 8px; }
+.ct td { padding: 7px 10px; border-top: 1px solid var(--line); }
+.ct td.c { text-align: center; } .ct .n { font-weight: 700; }
+.yes { color: var(--ok); font-weight: 800; } .no { color: var(--mut); }
+.mini { display: inline-block; width: 120px; height: 12px; border-radius: 99px; background: var(--track); vertical-align: middle; margin-left: 10px; overflow: hidden; }
+.mini i { display: block; height: 100%; background: var(--gold); }
 
 /* sign-in, shown once on the TV */
 .login { margin: auto; width: 760px; background: var(--card); border: 1px solid var(--line); border-radius: 32px; padding: 48px 56px; }
@@ -138,7 +172,20 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .login .err { color: var(--bad); font-size: 22px; margin-top: 18px; min-height: 30px; }
 
 /* small menu that appears on any key, click or touch */
-.menu { position: absolute; top: 24px; left: 50%; margin-left: -260px; width: 520px; display: none; justify-content: center; background: rgba(19, 19, 46, .96); border: 1px solid var(--line); border-radius: 999px; padding: 10px; z-index: 5; }
+.menu { position: absolute; top: 24px; left: 50%; margin-left: -200px; width: 400px; display: none; justify-content: center; background: rgba(19, 19, 46, .96); border: 1px solid var(--line); border-radius: 999px; padding: 10px; z-index: 5; }
 .menu.on { display: flex; }
 .menu button { flex: 1; height: 56px; border: 0; border-radius: 999px; background: var(--track); color: var(--fg); font: 700 22px Tajawal, sans-serif; margin: 0 5px; cursor: pointer; }
 .menu button:focus { outline: 3px solid var(--gold); }
+
+/* header: four view buttons and the clock stay on one line; a long subtitle is cut, not wrapped */
+.hd > .brand { -webkit-box-flex: 1; flex: 1; min-width: 0; margin-left: 24px; }
+.brand > div { min-width: 0; }
+.mark { flex-shrink: 0; }
+.hd h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.views { flex-shrink: 0; }
+.views .dot { white-space: nowrap; font-size: 19px; padding: 9px 12px 9px 16px; }
+.views .dot b { width: 30px; height: 30px; font-size: 17px; }
+.clock { flex-shrink: 0; white-space: nowrap; margin-right: 24px; }
+.clock b { font-size: 50px; }
+.brp .tw { -webkit-box-flex: 1; flex: 1; min-width: 0; margin: 0 16px; }

@@ -20,6 +20,7 @@ import { CsrPage } from "@/pages/CsrPage"
 import { ComplaintsPage } from "@/pages/ComplaintsPage"
 import { PbxPage } from "@/pages/PbxPage"
 import { StudentsPage } from "@/pages/students/StudentsPage"
+import { DisplayPage } from "@/pages/DisplayPage"
 import { ContactsPage } from "@/pages/ContactsPage"
 import { TransportPage } from "@/pages/TransportPage"
 import { ForcePasswordChange } from "@/components/EditorLogin"
@@ -85,6 +86,8 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
       return <PbxPage key={nonce} />
     case "students":
       return <StudentsPage key={nonce} />
+    case "display":
+      return <DisplayPage key="display" />
     case "competitors":
       return <CompetitorsPage key={nonce} />
     case "builder":

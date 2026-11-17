@@ -1,29 +1,42 @@
 /*
- * شاشة أعداد الطلاب (للتلفزيون في غرفة المدير).
+ * شاشة العرض (للتلفزيون في غرفة المدير ولتبويب «شاشة العرض» في المنصة).
+ * أربعة عروض يختارها المشاهد يدويًا: أعداد الطلاب، الانسحاب، المسؤولية المجتمعية، التواصل الاجتماعي.
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
- * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة.
- * تدخل بحساب «شاشة عرض» (أو حساب مدير المنصة) وتقرأ studentCounts فقط عبر Supabase REST؛
- * قاعدة البيانات لا تعطي هذا الحساب أي شيء آخر (screen_collection في supabase/schema.sql).
+ * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
+ *
+ * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة) عبر Supabase Auth REST وتحفظ جلستها.
+ * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
+ * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
+ * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans والمجموعات العامة (screen_collection).
  * الرابط والمفتاح العام (publishable) عامّان بطبيعتهما كما في src/config.ts.
  */
 (function () {
   'use strict'
   var API = 'https://mzuqpvqqkdolseglgvfy.supabase.co'
   var KEY = 'sb_publishable_KckG1geNxChv5VgyBRuUfA_Zb6hOxf_'
-  var ROTATE_MS = 30000 // كل عرض 30 ثانية (اعتمده مدير المنصة)
-  var POLL_MS = 60000 // فحص وجود سحب جديد كل دقيقة
+  var POLL_MS = 60000 // فحص البيانات كل دقيقة
   var STORE = 'andalus-screen-session'
+  var VIEW_STORE = 'andalus-screen-view'
   var LEVELS = { wdGood: 0.08, wdFollow: 0.12, ocHigh: 0.85, ocGood: 0.7 } // اعتمدها مدير المنصة
+  var EMBED = /[?&]embed=1/.test(location.search)
+  var VIEWS = [[1, 'أعداد الطلاب'], [2, 'الانسحاب'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي']]
+  var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
+  var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
+  var MARKS = {"youtube": {"bg": "#ffffff", "fill": "#FF0000", "d": "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"}, "facebook": {"bg": "#3B5998", "fill": "#ffffff", "d": "M15.12 5.32H17V2.14A24.5 24.5 0 0 0 14.26 2c-2.72 0-4.58 1.66-4.58 4.7V9.5H6.6v3.56h3.08V22h3.68v-8.94h3.07l.46-3.56h-3.53V7.07c0-1.03.28-1.75 1.76-1.75z"}, "linkedin": {"bg": "#0077B5", "fill": "#ffffff", "d": "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452z"}, "snapchat": {"bg": "#FFFC00", "fill": "#000000", "d": "M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.39.839-1.213 1.168-.089.029-.209.075-.344.119-.45.135-1.139.36-1.333.81-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014.255.044.435.27.42.509 0 .075-.015.149-.045.225-.24.569-1.273.988-3.146 1.271-.059.091-.12.375-.164.57-.029.179-.074.36-.134.553-.076.271-.27.405-.555.405h-.03c-.135 0-.313-.031-.538-.074-.36-.075-.765-.135-1.273-.135-.3 0-.599.015-.913.074-.6.104-1.123.464-1.723.884-.853.599-1.826 1.288-3.294 1.288-.06 0-.119-.015-.18-.015h-.149c-1.468 0-2.427-.675-3.279-1.288-.599-.42-1.107-.779-1.707-.884-.314-.045-.629-.074-.928-.074-.54 0-.958.089-1.272.149-.211.043-.391.074-.54.074-.374 0-.523-.224-.583-.42-.061-.192-.09-.389-.135-.567-.046-.181-.105-.494-.166-.57-1.918-.222-2.95-.642-3.189-1.226-.031-.063-.052-.15-.055-.225-.015-.243.165-.465.42-.509 3.264-.54 4.73-3.879 4.791-4.02l.016-.029c.18-.345.224-.645.119-.869-.195-.434-.884-.658-1.332-.809-.121-.029-.24-.074-.346-.119-1.107-.435-1.257-.93-1.197-1.273.09-.479.674-.793 1.168-.793.146 0 .27.029.383.074.42.194.789.3 1.104.3.234 0 .384-.06.465-.105l-.046-.569c-.098-1.626-.225-3.651.307-4.837C7.392 1.077 10.739.807 11.727.807l.419-.015h.06z"}, "instagram": {"bg": "#d62976", "fill": "#ffffff", "d": "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"}, "x": {"bg": "#000000", "fill": "#ffffff", "d": "M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"}, "tiktok": {"bg": "#000000", "fill": "#ffffff", "d": "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"}, "whatsapp": {"bg": "#25D366", "fill": "#ffffff", "d": "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"}}
 
   var app = document.getElementById('app')
   var stage = document.getElementById('stage')
   var session = null
-  var counts = null
+  var data = { counts: null, plans: [], accounts: [], readings: [] }
   var view = 1
   var online = true
   var lastOk = null
-  var rotateTimer = null
   var pollTimer = null
+  var started = false
+
+  try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= 4) view = saved } catch (e) { /* no storage */ }
+  var qv = /[?&]view=(\d)/.exec(location.search)
+  if (qv && +qv[1] >= 1 && +qv[1] <= 4) view = +qv[1]
 
   /* ------------------------------------------------------------ fit 1920×1080 to the screen */
   function fit() {
@@ -40,18 +53,19 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] }) }
   var nf = new Intl.NumberFormat('en-US')
   function num(n) { return nf.format(n) }
-  function pct(x) { return '<span class="l">' + (x * 100).toFixed(1) + '%</span>' }
-  function signed(x) { return '<span class="l">' + (x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(1) + '%</span>' }
   function L(s) { return '<span class="l">' + s + '</span>' }
+  function pct(x) { return L((x * 100).toFixed(1) + '%') }
+  function signed(x) { return L((x >= 0 ? '+' : '−') + Math.abs(x * 100).toFixed(1) + '%') }
   function short(n) { return String(n).replace(/^\s*[أا]ندلس\s+/, '').trim() }
   function wd(x) { return x <= LEVELS.wdGood ? ['ok', 'جيد'] : x <= LEVELS.wdFollow ? ['warn', 'متابعة'] : ['bad', 'مرتفع'] }
   function oc(x) { return x >= LEVELS.ocHigh ? ['ok', 'مرتفع'] : x >= LEVELS.ocGood ? ['sky', 'جيد'] : ['warn', 'منخفض'] }
   var dateFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })
+  var monthFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { month: 'long', year: 'numeric' })
   var dayFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   var timeFmt = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', { hour: 'numeric', minute: '2-digit' })
-  function fmtDate(iso) { return dateFmt.format(new Date(iso + 'T12:00:00')) }
-  function notesFor(name) { var s = short(name); return (counts.notes || []).filter(function (n) { return n.title.indexOf(s) >= 0 }) }
-  function preliminary() { return (counts.notes || []).some(function (n) { return n.title.indexOf('النمو') >= 0 && /مبدئي/.test(n.title + n.text) }) }
+  function fmtDate(iso) { return dateFmt.format(new Date(String(iso).slice(0, 10) + 'T12:00:00')) }
+  function fmtMonth(ym) { return monthFmt.format(new Date(ym + '-15T12:00:00')) }
+  function max(list) { return list.length ? Math.max.apply(null, list) : 0 }
   function normPhone(input) {
     var d = String(input).replace(/[\s\-()]/g, '').replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x0660) }).replace(/^\+/, '').replace(/^00/, '')
     if (/^05\d{8}$/.test(d)) return '966' + d.slice(1)
@@ -59,8 +73,13 @@
     if (/^9665\d{8}$/.test(d)) return d
     return null
   }
+  function logo(p) {
+    var m = MARKS && MARKS[p]
+    if (!m) return '<span class="pl" style="background:#33335a"></span>'
+    return '<span class="pl" style="background:' + m.bg + '"><svg viewBox="0 0 24 24"><g transform="translate(5 5) scale(.58)"><path d="' + m.d + '" fill="' + m.fill + '"/></g></svg></span>'
+  }
 
-  /* ------------------------------------------------------------ session (Supabase Auth REST) */
+  /* ------------------------------------------------------------ session */
   function saveSession(s) {
     session = s
     try { if (s) localStorage.setItem(STORE, JSON.stringify(s)); else localStorage.removeItem(STORE) } catch (e) { /* private mode */ }
@@ -78,31 +97,41 @@
     if (!session || !session.refresh_token) throw Object.assign(new Error('no session'), { status: 401 })
     saveSession(await auth('refresh_token', { refresh_token: session.refresh_token }))
   }
-  async function api(path, opts, retried) {
+  /** The access token: the portal's own session when embedded, the TV's saved session otherwise. */
+  async function token() {
+    if (EMBED) {
+      var bridge = null
+      try { bridge = window.parent && window.parent !== window ? window.parent.__andalusScreen : null } catch (e) { bridge = null }
+      var t = bridge ? await bridge.token() : null
+      if (!t) throw Object.assign(new Error('no portal session'), { status: 401 })
+      return t
+    }
     if (session && session.expires_at - Date.now() < 120000) await refresh()
+    return session.access_token
+  }
+  async function api(path, opts, retried) {
     opts = opts || {}
-    var headers = { apikey: KEY, Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' }
-    var res = await fetch(API + path, { method: opts.method || 'GET', headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined })
-    if (res.status === 401 && !retried) { await refresh(); return api(path, opts, true) }
+    var res = await fetch(API + path, { method: opts.method || 'GET', headers: { apikey: KEY, Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined })
+    if (res.status === 401 && !retried && !EMBED) { await refresh(); return api(path, opts, true) }
     if (!res.ok) { var e = new Error('http ' + res.status); e.status = res.status; throw e }
     var t = await res.text()
     return t ? JSON.parse(t) : null
   }
 
-  /* ------------------------------------------------------------ screens */
+  /* ------------------------------------------------------------ forms and messages */
   function showLogin(error) {
     stopTimers()
+    if (EMBED) { showMessage('ادخل إلى المنصة أولًا', 'يظهر هذا العرض لمدير المنصة وهو داخل المنصة.'); return }
     app.innerHTML =
       '<form class="login" id="login" autocomplete="on">' +
-      '<h2>شاشة أعداد الطلاب</h2>' +
+      '<h2>شاشة العرض</h2>' +
       '<p>ادخل بحساب «شاشة عرض» مرة واحدة، وتبقى الشاشة تعمل بعدها.</p>' +
       '<label for="ph">رقم الجوال</label><input id="ph" type="tel" inputmode="tel" dir="ltr" placeholder="05XXXXXXXX" autocomplete="username" required>' +
       '<label for="pw">كلمة المرور</label><input id="pw" type="password" dir="ltr" autocomplete="current-password" required>' +
       '<div class="err" id="err">' + esc(error || '') + '</div>' +
       '<button type="submit" id="go">دخول</button></form>'
-    var f = document.getElementById('login')
     document.getElementById('ph').focus()
-    f.addEventListener('submit', async function (ev) {
+    document.getElementById('login').addEventListener('submit', async function (ev) {
       ev.preventDefault()
       var err = document.getElementById('err'), btn = document.getElementById('go')
       var phone = normPhone(document.getElementById('ph').value)
@@ -134,8 +163,7 @@
       if (p1 !== p2) { err.textContent = 'الكلمتان غير متطابقتين.'; return }
       btn.disabled = true
       try {
-        if (session.expires_at - Date.now() < 120000) await refresh()
-        var res = await fetch(API + '/auth/v1/user', { method: 'PUT', headers: { apikey: KEY, Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p1 }) })
+        var res = await fetch(API + '/auth/v1/user', { method: 'PUT', headers: { apikey: KEY, Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' }, body: JSON.stringify({ password: p1 }) })
         if (!res.ok) throw new Error('pw')
         await api('/rest/v1/rpc/password_changed', { method: 'POST', body: {} })
         start()
@@ -150,27 +178,44 @@
 
   /* ------------------------------------------------------------ data */
   async function load() {
-    var rows = await api('/rest/v1/docs?collection=eq.studentCounts&select=id,data')
-    var list = (rows || []).map(function (r) { var d = r.data || {}; d.id = r.id; return d }).filter(function (d) { return d.date && d.branches && d.total })
-    list.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0 })
+    var res = await Promise.all([
+      api('/rest/v1/docs?collection=eq.studentCounts&select=id,data'),
+      api('/rest/v1/docs?collection=eq.csrPlans&select=id,data'),
+      api('/rest/v1/docs?collection=eq.socialAccounts&select=id,data'),
+      api('/rest/v1/docs?collection=eq.socialReadings&select=id,data'),
+    ])
+    var rows = function (r) { return (r || []).map(function (x) { var d = x.data || {}; d.id = x.id; return d }) }
+    var counts = rows(res[0]).filter(function (d) { return d.date && d.branches && d.total })
+    counts.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0 })
+    var next = { counts: counts[0] || null, plans: rows(res[1]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]) }
     online = true
     lastOk = new Date()
-    var next = list[0] || null
-    var changed = JSON.stringify(next) !== JSON.stringify(counts)
-    counts = next
+    var changed = JSON.stringify(next) !== JSON.stringify(data)
+    data = next
     return changed
   }
 
-  /* ------------------------------------------------------------ render */
+  /* ------------------------------------------------------------ shared pieces */
+  function subtitle() {
+    var c = data.counts
+    if (view === 1) return c ? 'سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(c.date)) + '</b>' + (c.year ? ' · العام الدراسي ' + L(esc(c.year.replace('-', '/'))) : '') : ''
+    if (view === 2) return c ? 'سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(c.date)) + '</b> · المحوَّلون غير محتسبين' : ''
+    if (view === 3) {
+      var read = data.plans.map(function (p) { return p.readAt || '' }).sort().pop()
+      return 'من «خطط الفروع» في ملف المنصة الشاملة لكل فرع' + (read ? ' · آخر قراءة <b>' + esc(fmtDate(read)) + '</b>' : '')
+    }
+    var m = latestMonth()
+    return 'أعداد المتابعين المسجّلة في المنصة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
+  }
   function header() {
-    var dots = [[1, 'نظرة عامة'], [2, 'الانسحاب والإشغال']].map(function (d) { return '<span class="dot' + (d[0] === view ? ' on' : '') + '"><b>' + d[0] + '</b>' + d[1] + '</span>' }).join('')
+    var dots = VIEWS.map(function (d) { return '<span class="dot' + (d[0] === view ? ' on' : '') + '"><b>' + d[0] + '</b>' + d[1] + '</span>' }).join('')
     var now = new Date()
-    return '<header class="hd"><div class="brand"><div class="mark">✦</div><div><h1>أعداد الطلاب</h1><p>سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(counts.date)) + '</b>' +
-      (counts.year ? ' · العام الدراسي ' + L(esc(counts.year.replace('-', '/'))) : '') + '</p></div></div>' +
+    return '<header class="hd"><div class="brand"><div class="mark">✦</div><div><h1>' + VIEWS[view - 1][1] + '</h1><p>' + subtitle() + '</p></div></div>' +
       '<div class="views">' + dots + '</div>' +
       '<div class="clock"><b id="clk">' + esc(timeFmt.format(now)) + '</b><span id="day">' + esc(dayFmt.format(now)) + '</span></div></header>'
   }
-
+  function keys(items) { return '<p class="keys">' + items.map(function (k) { return '<span><em class="' + k[0] + '"></em>' + k[1] + '</span>' }).join('') + '</p>' }
+  function empty(title, body) { return header() + '<div class="msg"><h2>' + esc(title) + '</h2><p>' + esc(body) + '</p></div>' }
   function gauge(v) {
     var r = 56, len = Math.PI * r
     function pt(t, rr) { return [70 + rr * Math.cos(Math.PI * t), 72 - rr * Math.sin(Math.PI * t)] }
@@ -179,31 +224,32 @@
       '<path d="M126 72 A56 56 0 0 0 14 72" fill="none" stroke="#d8b14b" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + (len * Math.max(0, Math.min(1, v))).toFixed(1) + ' ' + len.toFixed(1) + '"/>' +
       tick(LEVELS.ocGood) + tick(LEVELS.ocHigh) + '</svg>'
   }
+  function of(n) { return '<span class="of">من ' + n + '</span>' }
 
-  function kpis() {
-    var t = counts.total, w = wd(t.withdrawalRate), o = oc(t.occupancy)
+  /* ------------------------------------------------------------ 1 · student numbers */
+  function view1() {
+    var c = data.counts
+    if (!c) return empty('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة.')
+    var t = c.total, w = wd(t.withdrawalRate), o = oc(t.occupancy)
+    var prelim = (c.notes || []).some(function (n) { return n.title.indexOf('النمو') >= 0 && /مبدئي/.test(n.title + n.text) })
     var hero = '<div class="k hero"><span>الطلاب الحاليون</span><b>' + num(t.current) + '</b>' +
       (t.regular != null ? '<div class="split"><i style="width:' + (t.regular / Math.max(t.current, 1) * 100).toFixed(1) + '%"></i></div><small><em class="d w"></em>منتظم ' + num(t.regular) + '<em class="d g"></em>مستجد ' + num(t.newcomers) + '</small>' : '') + '</div>'
-    var growth = t.growth != null ? '<small>نمو الحاليين <strong class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</strong> ' + (preliminary() ? '<i class="tag">مبدئية</i>' : '') + '</small>' : ''
-    return '<section class="kpis">' + hero +
+    var growth = t.growth != null ? '<small>نمو الحاليين <strong class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</strong> ' + (prelim ? '<i class="tag">مبدئية</i>' : '') + '</small>' : ''
+    var kpis = '<section class="kpis">' + hero +
       '<div class="k"><span>الطلاب الجدد</span><b>' + num(t.newcomers) + '</b>' + growth + '</div>' +
       '<div class="k"><span>المنسحبون</span><b>' + num(t.withdrawn) + '</b>' + (t.transferred != null ? '<small>لا يشمل ' + num(t.transferred) + ' محوّلًا</small>' : '') + '</div>' +
       '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '<i class="chip ' + w[0] + '">' + w[1] + '</i></b><small>جيد حتى ' + L('8%') + ' · مرتفع فوق ' + L('12%') + '</small></div>' +
       '<div class="k gk"><span>نسبة الإشغال</span><div class="gw">' + gauge(t.occupancy) + '<b>' + pct(t.occupancy) + '</b></div><i class="chip ' + o[0] + '">' + o[1] + '</i></div>' +
       '<div class="k"><span>الطاقة التشغيلية</span><b>' + num(t.capacity) + '</b><small><strong>' + num(Math.max(t.capacity - t.current, 0)) + '</strong> مقعدًا متاحًا</small></div></section>'
-  }
-
-  function keys(items) { return '<p class="keys">' + items.map(function (k) { return '<span><em class="' + k[0] + '"></em>' + k[1] + '</span>' }).join('') + '</p>' }
-
-  function view1() {
-    var B = counts.branches.slice()
-    var maxCap = Math.max.apply(null, B.map(function (b) { return b.capacity }).concat([1]))
+    var B = c.branches.slice()
+    var maxCap = max(B.map(function (b) { return b.capacity })) || 1
+    var flagged = function (name) { var s = short(name); return (c.notes || []).some(function (n) { return n.title.indexOf(s) >= 0 }) }
     var bars = B.sort(function (a, b) { return b.occupancy - a.occupancy }).map(function (b) {
-      return '<div class="br"><span class="n">' + esc(short(b.name)) + (notesFor(b.name).length ? '<i class="fl">!</i>' : '') + '</span>' +
+      return '<div class="br"><span class="n">' + esc(short(b.name)) + (flagged(b.name) ? '<i class="fl">!</i>' : '') + '</span>' +
         '<span class="tw"><span class="tr" style="display:block;width:' + (b.capacity / maxCap * 100).toFixed(1) + '%"><i class="' + oc(b.occupancy)[0] + '" style="width:' + (Math.min(b.occupancy, 1) * 100).toFixed(1) + '%"></i></span></span>' +
         '<b>' + pct(b.occupancy) + '</b><small>' + num(b.current) + ' من ' + num(b.capacity) + '</small></div>'
     }).join('')
-    var watch = counts.branches.filter(function (b) { return b.occupancy < LEVELS.ocGood || b.withdrawalRate > LEVELS.wdFollow })
+    var watch = c.branches.filter(function (b) { return b.occupancy < LEVELS.ocGood || b.withdrawalRate > LEVELS.wdFollow })
     watch.sort(function (a, b) {
       var sa = (a.occupancy < LEVELS.ocGood) + (a.withdrawalRate > LEVELS.wdFollow), sb = (b.occupancy < LEVELS.ocGood) + (b.withdrawalRate > LEVELS.wdFollow)
       return sb - sa || a.occupancy - b.occupancy
@@ -214,103 +260,166 @@
         (b.withdrawalRate > LEVELS.wdFollow ? '<i class="chip bad">انسحاب ' + pct(b.withdrawalRate) + '</i>' : '') + '</span></li>'
     }).join('') + '</ul>' : '<p class="none">كل الفروع ضمن الحدود المعتمدة</p>'
     var SC = ['#d8b14b', '#33bdf2', '#8f8fe6', '#4fcf8e', '#c084fc', '#ef6a5c']
-    var st = counts.total.stages || [], names = counts.stageNames || [], tot = st.reduce(function (a, b) { return a + b }, 0) || 1
+    var st = t.stages || [], names = c.stageNames || [], tot = st.reduce(function (a, b) { return a + b }, 0) || 1
     var stages = names.length && st.length ? '<div class="card"><h2>حسب المرحلة <span>الطلاب الحاليون</span></h2><div class="stack">' +
       st.map(function (v, i) { return '<i style="width:' + (v / tot * 100).toFixed(2) + '%;background:' + SC[i % SC.length] + '"></i>' }).join('') + '</div><p class="sleg">' +
       names.map(function (n, i) { return '<span><em style="background:' + SC[i % SC.length] + '"></em>' + esc(n) + ' <b>' + num(st[i] || 0) + '</b></span>' }).join('') + '</p></div>' : ''
-    return header() + kpis() +
+    return header() + kpis +
       '<section class="body"><div class="card big"><h2>إشغال الفروع <span>الحاليون مقابل الطاقة · طول الشريط = الطاقة</span></h2><div class="bars">' + bars + '</div>' +
       keys([['ok', 'مرتفع ' + L('85%') + ' فأكثر'], ['sky', 'جيد من ' + L('70%') + ' إلى ' + L('85%')], ['warn', 'منخفض أقل من ' + L('70%')]]) + '</div>' +
       '<div class="col"><div class="card"><h2>فروع تحتاج متابعة <span>إشغال أقل من ' + L('70%') + ' أو انسحاب فوق ' + L('12%') + '</span></h2>' + wrows + '</div>' + stages + '</div></section>'
   }
 
-  /** Puts each name beside its bubble where it overlaps the fewest bubbles and names. */
-  function placeLabels(items) {
-    var boxes = []
-    function hit(a) {
-      var s = 0
-      boxes.forEach(function (b) { s += Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)) })
-      items.forEach(function (c) { var dx = Math.max(a.x0 - c.x, 0, c.x - a.x1), dy = Math.max(a.y0 - c.y, 0, c.y - a.y1); if (dx * dx + dy * dy < c.r * c.r) s += 600 })
-      if (a.x0 < 60 || a.x1 > 990) s += 5000
-      return s
-    }
-    return items.slice().sort(function (a, b) { return b.r - a.r }).map(function (it) {
-      var w = it.name.length * 11 + 6, h = 22
-      var opts = [
-        { tx: it.x, ty: it.y - it.r - 8, an: 'middle', box: { x0: it.x - w / 2, x1: it.x + w / 2, y0: it.y - it.r - 8 - h, y1: it.y - it.r - 4 } },
-        { tx: it.x, ty: it.y + it.r + 24, an: 'middle', box: { x0: it.x - w / 2, x1: it.x + w / 2, y0: it.y + it.r + 4, y1: it.y + it.r + 26 } },
-        { tx: it.x + it.r + 8, ty: it.y + 7, an: 'start', box: { x0: it.x + it.r + 6, x1: it.x + it.r + 8 + w, y0: it.y - h / 2, y1: it.y + h / 2 } },
-        { tx: it.x - it.r - 8, ty: it.y + 7, an: 'end', box: { x0: it.x - it.r - 8 - w, x1: it.x - it.r - 6, y0: it.y - h / 2, y1: it.y + h / 2 } },
-      ]
-      var best = opts[0], score = Infinity
-      opts.forEach(function (o) { var s = hit(o.box); if (s < score - 1) { best = o; score = s } })
-      boxes.push(best.box)
-      return { name: it.name, tx: best.tx, ty: best.ty, an: best.an }
-    })
-  }
-
+  /* ------------------------------------------------------------ 2 · withdrawal */
   function view2() {
-    var B = counts.branches
-    var W = 1000, H = 780, Lm = 60, R = 20, T = 20, Bm = 50
-    var occs = B.map(function (b) { return b.occupancy }), wds = B.map(function (b) { return b.withdrawalRate })
-    var x0 = Math.max(0, Math.floor((Math.min.apply(null, occs) - 0.04) * 20) / 20), x1 = Math.min(1, Math.ceil((Math.max.apply(null, occs) + 0.03) * 20) / 20)
-    var y0 = Math.max(0, Math.floor((Math.min.apply(null, wds) - 0.015) * 25) / 25), y1 = Math.ceil((Math.max.apply(null, wds.concat([LEVELS.wdFollow])) + 0.015) * 25) / 25
-    function X(v) { return Lm + (v - x0) / (x1 - x0) * (W - Lm - R) }
-    function Y(v) { return H - Bm - (v - y0) / (y1 - y0) * (H - T - Bm) }
-    var maxCur = Math.max.apply(null, B.map(function (b) { return b.current }).concat([1]))
-    function rad(b) { return 12 + 26 * Math.sqrt(b.current / maxCur) }
-    var FILL = { ok: '#4fcf8e', warn: '#f6a83a', bad: '#ef6a5c' }
-    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="mx" style="direction:ltr" preserveAspectRatio="xMidYMid meet">'
-    function zone(xa, xb, ya, yb, fill) { var a = Math.max(xa, x0), b = Math.min(xb, x1), c = Math.max(ya, y0), d = Math.min(yb, y1); return a < b && c < d ? '<rect x="' + X(a).toFixed(0) + '" y="' + Y(d).toFixed(0) + '" width="' + (X(b) - X(a)).toFixed(0) + '" height="' + (Y(c) - Y(d)).toFixed(0) + '" fill="' + fill + '"/>' : '' }
-    s += zone(x0, LEVELS.ocGood, LEVELS.wdFollow, y1, 'rgba(239,106,92,.13)') + zone(LEVELS.ocHigh, x1, y0, LEVELS.wdGood, 'rgba(79,207,142,.13)')
-    var v
-    for (v = Math.ceil(x0 * 10) / 10; v <= x1 + 1e-9; v += 0.1) s += '<line x1="' + X(v).toFixed(1) + '" x2="' + X(v).toFixed(1) + '" y1="' + T + '" y2="' + (H - Bm) + '" class="gl"/><text x="' + X(v).toFixed(1) + '" y="' + (H - Bm + 26) + '" class="ax" text-anchor="middle">' + Math.round(v * 100) + '%</text>'
-    for (v = y0; v <= y1 + 1e-9; v += 0.04) s += '<line x1="' + Lm + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" class="gl"/><text x="' + (Lm - 10) + '" y="' + (Y(v) + 6).toFixed(1) + '" class="ax" text-anchor="end">' + Math.round(v * 100) + '%</text>'
-    if (LEVELS.ocGood > x0 && LEVELS.ocGood < x1) s += '<line x1="' + X(LEVELS.ocGood).toFixed(1) + '" x2="' + X(LEVELS.ocGood).toFixed(1) + '" y1="' + T + '" y2="' + (H - Bm) + '" class="th"/>'
-    if (LEVELS.wdFollow < y1) s += '<line x1="' + Lm + '" x2="' + (W - R) + '" y1="' + Y(LEVELS.wdFollow).toFixed(1) + '" y2="' + Y(LEVELS.wdFollow).toFixed(1) + '" class="th"/>'
-    s += '<text x="' + (X(x0) + 12).toFixed(0) + '" y="' + (Y(y1) + 30).toFixed(0) + '" class="ql bad">يحتاج تدخلًا</text><text x="' + (X(x1) - 12).toFixed(0) + '" y="' + (Y(y0) - 14).toFixed(0) + '" class="ql ok" text-anchor="end">مستقر</text>'
-    B.slice().sort(function (a, b) { return b.current - a.current }).forEach(function (b) {
-      s += '<circle cx="' + X(b.occupancy).toFixed(1) + '" cy="' + Y(b.withdrawalRate).toFixed(1) + '" r="' + rad(b).toFixed(1) + '" fill="' + FILL[wd(b.withdrawalRate)[0]] + '" fill-opacity=".85" stroke="#0a0a1f" stroke-width="3"/>'
-    })
-    placeLabels(B.map(function (b) { return { name: short(b.name), x: X(b.occupancy), y: Y(b.withdrawalRate), r: rad(b) } })).forEach(function (l) {
-      s += '<text x="' + l.tx.toFixed(1) + '" y="' + l.ty.toFixed(1) + '" class="bl" text-anchor="' + l.an + '">' + esc(l.name) + '</text>'
-    })
-    s += '<text x="' + ((Lm + W - R) / 2).toFixed(0) + '" y="' + (H - 4) + '" class="at" text-anchor="middle">نسبة الإشغال</text></svg>'
-    var maxW = Math.max.apply(null, wds.concat([1e-9]))
-    var wbars = B.slice().sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate }).map(function (b) {
+    var c = data.counts
+    if (!c) return empty('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة.')
+    var t = c.total, w = wd(t.withdrawalRate), B = c.branches
+    var high = B.filter(function (b) { return b.withdrawalRate > LEVELS.wdFollow }).sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate })
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero"><span>المنسحبون</span><b>' + num(t.withdrawn) + '</b><small>من ' + num(t.current + t.withdrawn) + ' طالبًا (الحاليون + المنسحبون)</small></div>' +
+      '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '<i class="chip ' + w[0] + '">' + w[1] + '</i></b><small>جيد حتى ' + L('8%') + ' · متابعة حتى ' + L('12%') + ' · مرتفع فوقها</small></div>' +
+      (t.transferred != null ? '<div class="k"><span>محوّلون إلى فرع آخر</span><b>' + num(t.transferred) + '</b><small>انتقلوا داخل الشركة، فلا يُحتسبون منسحبين</small></div>' : '') +
+      '<div class="k"><span>فروع انسحابها مرتفع</span><b>' + high.length + '<i class="chip bad">فوق ' + L('12%') + '</i></b><small>' + (high.length ? high.map(function (b) { return esc(short(b.name)) }).join('، ') : 'لا يوجد') + '</small></div></section>'
+    var maxW = max(B.map(function (b) { return b.withdrawalRate })) || 1e-9, maxN = max(B.map(function (b) { return b.withdrawn })) || 1
+    var rate = B.slice().sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate }).map(function (b) {
       return '<div class="br w"><span class="n">' + esc(short(b.name)) + '</span><span class="tw"><span class="tr" style="display:block"><i class="' + wd(b.withdrawalRate)[0] + '" style="width:' + (b.withdrawalRate / maxW * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.withdrawalRate) + '</b><small>' + num(b.withdrawn) + '</small></div>'
     }).join('')
-    return header() +
-      '<section class="body b2"><div class="card big"><h2>مصفوفة الإشغال والانسحاب <span>حجم الدائرة = عدد الطلاب · لونها = حالة الانسحاب</span></h2><div class="mxw"><span class="yl">نسبة الانسحاب ↑</span>' + s + '</div></div>' +
-      '<div class="card"><h2>نسبة الانسحاب لكل فرع <span>المنسحبون ÷ (الحاليون + المنسحبون) · العدد بجانبها</span></h2><div class="bars">' + wbars + '</div>' +
-      keys([['ok', 'جيد حتى ' + L('8%')], ['warn', 'متابعة حتى ' + L('12%')], ['bad', 'مرتفع فوق ' + L('12%')]]) + '</div></section>'
+    var cnt = B.slice().sort(function (a, b) { return b.withdrawn - a.withdrawn }).map(function (b) {
+      return '<div class="br w"><span class="n">' + esc(short(b.name)) + '</span><span class="tw"><span class="tr" style="display:block"><i class="sky" style="width:' + (b.withdrawn / maxN * 100).toFixed(1) + '%"></i></span></span><b>' + num(b.withdrawn) + '</b><small>' + pct(b.withdrawalRate) + '</small></div>'
+    }).join('')
+    return header() + kpis +
+      '<section class="body eq"><div class="card"><h2>نسبة الانسحاب لكل فرع <span>العدد بجانبها</span></h2><div class="bars">' + rate + '</div>' +
+      keys([['ok', 'جيد حتى ' + L('8%')], ['warn', 'متابعة حتى ' + L('12%')], ['bad', 'مرتفع فوق ' + L('12%')]]) + '</div>' +
+      '<div class="card"><h2>عدد المنسحبين لكل فرع <span>النسبة بجانبه</span></h2><div class="bars">' + cnt + '</div><p class="note">الفرع الكبير قد يكثر منسحبوه وتبقى نسبته منخفضة، فالعرضان معًا يكملان الصورة.</p></div></section>'
   }
 
+  /* ------------------------------------------------------------ 3 · CSR (branch plans) */
+  function view3() {
+    var plans = data.plans
+    if (!plans.length) return empty('لا توجد خطط مقروءة بعد', 'تُقرأ خطط المسؤولية المجتمعية لكل فرع مع «حدث المؤشرات».')
+    var TR = { edu: 'المسار التعليمي', val: 'المسار التربوي القيمي' }
+    var name = function (p) { return BRANCH[p.branch || p.id] || p.branch || p.id }
+    var pv = function (s) { var n = parseFloat(String(s || '0').replace('%', '')); return isNaN(n) ? 0 : n }
+    var shown = function (s) { return L(String(s || '0%').replace(/\.00%$/, '%').replace(/(\.\d)\d%$/, '$1%')) }
+    var rows = [], nolink = [], noProjects = [], missing = [], all = 0, approved = 0, edu = 0, val = 0, other = 0
+    plans.forEach(function (p) {
+      if (p.status !== 'ok') { nolink.push(name(p)); return }
+      var pr = (p.projects || []).filter(function (x) { return !x.empty })
+      var ac = ((p.kpi || []).filter(function (k) { return k.col === 'AC' })[0] || {}).value || '0%'
+      var e = pr.filter(function (x) { return x.track === 'edu' }).length, v = pr.filter(function (x) { return x.track === 'val' }).length
+      var a = pr.filter(function (x) { return x.approval === 'معتمد' }).length
+      all += pr.length; approved += a; edu += e; val += v; other += pr.length - e - v
+      if (!pr.length) noProjects.push(name(p))
+      else if (!e || !v) missing.push([name(p), !e ? TR.edu : TR.val])
+      rows.push({ n: name(p), projects: pr.length, edu: e, val: v, approved: a, ac: ac })
+    })
+    rows.sort(function (a, b) { return pv(b.ac) - pv(a.ac) || b.approved - a.approved || b.projects - a.projects || (a.n < b.n ? -1 : 1) })
+    var startedRows = rows.filter(function (r) { return pv(r.ac) > 0 })
+    var noneApproved = rows.filter(function (r) { return r.projects && !r.approved }).length
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero"><span>فروع لها خطة</span><b>' + rows.length + of(plans.length) + '</b><small>' + (nolink.length ? 'بلا رابط في سجل المسؤولية المجتمعية: ' + esc(nolink.join('، ')) : 'كل الفروع لها رابط خطة') + '</small></div>' +
+      '<div class="k"><span>المشاريع المخططة</span><b>' + all + '</b><small>تعليمي ' + edu + ' · تربوي قيمي ' + val + (other ? ' · أخرى ' + other : '') + '</small></div>' +
+      '<div class="k"><span>المشاريع المعتمدة</span><b>' + approved + of(all) + '</b><small>الاعتماد كما في عمود الاعتماد بكل خطة</small></div>' +
+      '<div class="k"><span>فروع بدأ تحقق مستهدفها</span><b>' + startedRows.length + of(rows.length) + '</b><small>' + (startedRows.length ? startedRows.map(function (r) { return esc(r.n) + ' ' + shown(r.ac) }).join('، ') : 'لا يوجد بعد') + '</small></div></section>'
+    var yes = '<span class="yes">✓</span>', no = '<span class="no">—</span>'
+    var trs = rows.map(function (r) {
+      return '<tr><td class="n">' + esc(r.n) + '</td><td class="c">' + (r.projects || no) + '</td><td class="c">' + (r.edu ? yes : no) + '</td><td class="c">' + (r.val ? yes : no) + '</td>' +
+        '<td class="c">' + (r.approved ? '<span class="yes">' + r.approved + '</span>' : '<span class="no">0</span>') + '</td>' +
+        '<td><span class="mini"><i style="width:' + Math.min(pv(r.ac), 100).toFixed(0) + '%"></i></span>' + shown(r.ac) + '</td></tr>'
+    }).join('')
+    var follow = []
+    if (nolink.length) follow.push([nolink.join('، '), 'لا رابط لخطتها في سجل روابط المسؤولية المجتمعية'])
+    noProjects.forEach(function (n) { follow.push([n, 'الخطة موجودة بلا مشاريع مكتوبة']) })
+    missing.forEach(function (m) { follow.push([m[0], 'لا يوجد مشروع في ' + m[1]]) })
+    if (noneApproved) follow.push([noneApproved + (noneApproved > 10 ? ' فرعًا' : ' فروع'), 'لم يُعتمد أي مشروع من خطتها بعد'])
+    var flist = follow.length ? '<ul class="list miss">' + follow.map(function (f) { return '<li><div class="nm"><b>' + esc(f[0]) + '</b><span>' + esc(f[1]) + '</span></div></li>' }).join('') + '</ul>' : '<p class="none">لا ملاحظات على الخطط</p>'
+    var tracks = [['المسار التعليمي', edu, '#33bdf2'], ['المسار التربوي القيمي', val, '#d8b14b']]
+    if (other) tracks.push(['مشاريع إضافية', other, '#8f8fe6'])
+    var maxT = max(tracks.map(function (x) { return x[1] })) || 1
+    var tbars = tracks.map(function (x) { return '<div class="br t"><span class="n">' + x[0] + '</span><span class="tw"><span class="tr" style="display:block"><i style="background:' + x[2] + ';width:' + (x[1] / maxT * 100).toFixed(1) + '%"></i></span></span><b>' + x[1] + '</b></div>' }).join('')
+    return header() + kpis +
+      '<section class="body b3"><div class="card big"><h2>خطة كل فرع <span>«تحقق مستهدف العام» كما في ورقة كل فرع</span></h2>' +
+      '<table class="ct"><thead><tr><th>الفرع</th><th>المشاريع</th><th>تعليمي</th><th>تربوي قيمي</th><th>معتمد</th><th>تحقق مستهدف العام</th></tr></thead><tbody>' + trs + '</tbody></table></div>' +
+      '<div class="col"><div class="card"><h2>تحتاج متابعة</h2>' + flist + '</div>' +
+      '<div class="card"><h2>المشاريع حسب المسار</h2><div class="tb">' + tbars + '</div></div></div></section>'
+  }
+
+  /* ------------------------------------------------------------ 4 · social media in brief */
+  function months() {
+    var seen = {}
+    data.readings.forEach(function (r) { if (r.month) seen[r.month] = 1 })
+    return Object.keys(seen).sort()
+  }
+  function latestMonth() { var m = months(); return m[m.length - 1] || null }
+  function view4() {
+    var ms = months(), cur = ms[ms.length - 1], prev = ms[ms.length - 2]
+    if (!cur) return empty('لا توجد قراءات بعد', 'تُسجَّل أعداد المتابعين شهريًا في تبويب التواصل الاجتماعي.')
+    var A = {}
+    data.accounts.forEach(function (a) { A[a.id] = a })
+    var now = {}, before = {}
+    data.readings.forEach(function (r) { if (!A[r.account]) return; if (r.month === cur) now[r.account] = r.followers; else if (r.month === prev) before[r.account] = r.followers })
+    var ids = Object.keys(now)
+    var total = ids.reduce(function (s, a) { return s + now[a] }, 0)
+    var both = ids.filter(function (a) { return before[a] != null })
+    var delta = both.reduce(function (s, a) { return s + now[a] - before[a] }, 0)
+    var plat = {}, count = {}
+    ids.forEach(function (a) { var p = A[a].platform; plat[p] = (plat[p] || 0) + now[a]; count[p] = (count[p] || 0) + 1 })
+    var order = Object.keys(plat).sort(function (a, b) { return plat[b] - plat[a] })
+    var big = order[0]
+    var maxP = plat[big] || 1
+    var unit = function (p, n) { return p === 'whatsapp' ? n + (n > 2 && n < 11 ? ' قنوات' : ' قناة') : n + (n > 2 && n < 11 ? ' حسابات' : ' حساب') }
+    var pbars = order.map(function (p) {
+      return '<div class="brp">' + logo(p) + '<span class="n">' + esc(PLATFORM[p] || p) + '<small>' + unit(p, count[p]) + '</small></span><span class="tw"><span class="tr" style="display:block"><i style="background:#d8b14b;width:' + (plat[p] / maxP * 100).toFixed(1) + '%"></i></span></span><b>' + num(plat[p]) + '</b></div>'
+    }).join('')
+    var top = ids.slice().sort(function (a, b) { return now[b] - now[a] }).slice(0, 6).map(function (a) {
+      return '<li>' + logo(A[a].platform) + '<div class="nm"><b>' + esc(A[a].name) + '</b><span>' + esc(PLATFORM[A[a].platform] || A[a].platform) + '</span></div><span class="v">' + num(now[a]) + '</span></li>'
+    }).join('')
+    var grow = both.map(function (a) { return [now[a] - before[a], a] }).filter(function (x) { return x[0] > 0 }).sort(function (a, b) { return b[0] - a[0] }).slice(0, 5)
+    var growList = grow.length ? '<ul class="list">' + grow.map(function (g) {
+      var a = g[1]
+      return '<li>' + logo(A[a].platform) + '<div class="nm"><b>' + esc(A[a].name) + '</b><span>' + esc(PLATFORM[A[a].platform] || A[a].platform) + ' · ' + L(num(before[a]) + ' → ' + num(now[a])) + '</span></div><span class="v pos">' + L('+' + num(g[0])) + '</span></li>'
+    }).join('') + '</ul>' : '<p class="none" style="color:var(--mut)">' + (prev ? 'لا زيادة مسجّلة عن ' + esc(fmtMonth(prev)) : 'تظهر بعد تسجيل شهرين') + '</p>'
+    var wa = count.whatsapp || 0
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero"><span>إجمالي المتابعين</span><b>' + num(total) + '</b><small>على ' + ids.length + ' حسابًا وقناة · ' + esc(fmtMonth(cur)) + '</small></div>' +
+      (prev ? '<div class="k"><span>الزيادة عن ' + esc(fmtMonth(prev).split(' ')[0]) + '</span><b class="' + (delta >= 0 ? 'pos' : 'neg') + '">' + L((delta >= 0 ? '+' : '−') + num(Math.abs(delta))) + '</b><small>على ' + both.length + ' حسابًا لها قراءة في الشهرين فقط</small></div>' : '') +
+      '<div class="k"><span>أكبر منصة</span><b>' + logo(big) + '<span class="bv">' + num(plat[big]) + '</span></b><small>' + esc(PLATFORM[big] || big) + ' · ' + unit(big, count[big]) + '</small></div>' +
+      (wa ? '<div class="k"><span>قنوات واتساب الفروع</span><b>' + wa + '</b><small>' + num(plat.whatsapp) + ' مشتركًا</small></div>' : '') + '</section>'
+    return header() + kpis +
+      '<section class="body b4"><div class="card"><h2>المتابعون حسب المنصة</h2><div class="bars">' + pbars + '</div></div>' +
+      '<div class="card"><h2>أكبر الحسابات</h2><ul class="list">' + top + '</ul></div>' +
+      '<div class="card"><h2>الأكثر نموًا هذا الشهر' + (prev ? ' <span>عن ' + esc(fmtMonth(prev).split(' ')[0]) + '</span>' : '') + '</h2>' + growList + '</div></section>'
+  }
+
+  /* ------------------------------------------------------------ render and control */
   function footer() {
     var st = online ? 'آخر تحديث ' + timeFmt.format(lastOk || new Date()) : 'غير متصل · آخر تحديث ' + (lastOk ? timeFmt.format(lastOk) : '—')
-    return '<div class="ft"><div class="prog"><i id="prog"></i></div><span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>' +
-      '<div class="menu" id="menu"><button type="button" id="m-full">ملء الشاشة</button><button type="button" id="m-next">العرض التالي</button><button type="button" id="m-out">تسجيل الخروج</button></div>'
+    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
+      '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>' +
+      (EMBED ? '' : '<div class="menu" id="menu"><button type="button" id="m-full">ملء الشاشة</button><button type="button" id="m-out">تسجيل الخروج</button></div>')
   }
-
   function render() {
-    if (!counts) { showMessage('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة، وسيظهر هنا تلقائيًا.'); return }
-    app.innerHTML = (view === 1 ? view1() : view2()) + footer()
-    bindMenu()
-    // the bar fills over the 30 seconds the view stays on screen
-    var bar = document.getElementById('prog')
-    bar.style.transition = 'none'; bar.style.width = '0'
-    setTimeout(function () { bar.style.transition = 'width ' + (ROTATE_MS / 1000) + 's linear'; bar.style.width = '100%' }, 50)
+    var body = view === 1 ? view1() : view === 2 ? view2() : view === 3 ? view3() : view4()
+    app.innerHTML = body + footer()
+    if (!EMBED) bindMenu()
+  }
+  function setView(v) {
+    v = ((v - 1 + 4) % 4) + 1
+    if (v === view && app.querySelector('.hd')) return
+    view = v
+    try { localStorage.setItem(VIEW_STORE, String(v)) } catch (e) { /* no storage */ }
+    if (started) render()
+    if (EMBED) try { window.parent.postMessage({ type: 'andalus-screen-view', view: v }, location.origin) } catch (e) { /* not framed */ }
   }
 
-  /* ------------------------------------------------------------ timers */
-  function stopTimers() { clearInterval(rotateTimer); clearInterval(pollTimer); rotateTimer = pollTimer = null }
-  function nextView() { view = view === 1 ? 2 : 1; render() }
+  function stopTimers() { clearInterval(pollTimer); pollTimer = null; started = false }
   function tickClock() {
     var now = new Date(), c = document.getElementById('clk'), d = document.getElementById('day')
     if (c) c.textContent = timeFmt.format(now)
     if (d) d.textContent = dayFmt.format(now)
-    // pick up a new version of the page once a night
-    if (now.getHours() === 3 && now.getMinutes() === 30 && performance.now() > 120000) location.reload()
+    // pick up a new version of the page once a night (the TV only)
+    if (!EMBED && now.getHours() === 3 && now.getMinutes() === 30 && performance.now() > 120000) location.reload()
   }
   setInterval(tickClock, 10000)
 
@@ -318,17 +427,12 @@
     var me = (await api('/rest/v1/rpc/me', { method: 'POST', body: {} })) || []
     return me[0] && (me[0].role === 'screen' || me[0].role === 'owner') ? me[0] : null
   }
-
   async function poll() {
     try {
       var changed = await load()
-      // nothing to show may mean the account was stopped from the members page
-      if (!counts && !(await allowed())) { saveSession(null); showLogin('هذا الحساب موقوف أو لم يعد حساب شاشة.'); return }
+      if (!data.counts && !data.plans.length && !(await allowed())) { saveSession(null); showLogin('هذا الحساب موقوف أو لم يعد حساب شاشة.'); return }
       if (changed) render()
-      else {
-        var s = document.getElementById('state')
-        if (s) { s.className = 'state'; s.textContent = 'آخر تحديث ' + timeFmt.format(lastOk) }
-      }
+      else { var s = document.getElementById('state'); if (s) { s.className = 'state'; s.textContent = 'آخر تحديث ' + timeFmt.format(lastOk) } }
     } catch (e) {
       if (e.status === 401 || e.status === 400) { saveSession(null); showLogin('انتهت صلاحية الدخول. ادخل مرة أخرى.'); return }
       online = false
@@ -337,45 +441,64 @@
     }
   }
 
-  /* ------------------------------------------------------------ menu, fullscreen, keep awake */
+  /* keys: 1-4 pick a view, arrows step through them (left = next, as the views run right to left), OK opens the menu */
+  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 97: 1, 98: 2, 99: 3, 100: 4 }
+  document.addEventListener('keydown', function (e) {
+    if (!started) return
+    var tag = (e.target && e.target.tagName) || ''
+    var menuOpen = !!document.querySelector('.menu.on')
+    var k = e.key, code = e.keyCode
+    var n = /^[1-4]$/.test(k) ? +k : KEYS[code]
+    if (n) { e.preventDefault(); hideMenu(); setView(n); return }
+    if (!menuOpen && (k === 'ArrowLeft' || code === 37)) { e.preventDefault(); setView(view + 1); return }
+    if (!menuOpen && (k === 'ArrowRight' || code === 39)) { e.preventDefault(); setView(view - 1); return }
+    if (k === 'Escape' || code === 461 || code === 10009 || k === 'GoBack') { hideMenu(); return }
+    if (!EMBED && !menuOpen && tag !== 'BUTTON' && (k === 'Enter' || code === 13)) { e.preventDefault(); showMenu() }
+  })
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'andalus-screen') return
+    if (e.data.view) setView(+e.data.view)
+    if (e.data.refresh && started) poll()
+  })
+
   var menuTimer = null
   function bindMenu() {
-    var full = document.getElementById('m-full'), next = document.getElementById('m-next'), out = document.getElementById('m-out')
+    var full = document.getElementById('m-full'), out = document.getElementById('m-out')
     full.onclick = function () { var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; if (f) f.call(el); hideMenu() }
-    next.onclick = function () { clearInterval(rotateTimer); rotateTimer = setInterval(nextView, ROTATE_MS); nextView() }
-    out.onclick = function () { if (window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); counts = null; showLogin() } }
+    out.onclick = function () { if (window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); data = { counts: null, plans: [], accounts: [], readings: [] }; showLogin() } }
   }
   function showMenu() {
     var m = document.getElementById('menu')
     if (!m) return
-    if (!m.classList.contains('on')) { m.classList.add('on'); document.getElementById('m-next').focus() }
+    if (!m.classList.contains('on')) { m.classList.add('on'); document.getElementById('m-full').focus() }
     clearTimeout(menuTimer); menuTimer = setTimeout(hideMenu, 8000)
   }
   function hideMenu() { var m = document.getElementById('menu'); if (m) m.classList.remove('on') }
-  document.addEventListener('keydown', function (e) { if (document.getElementById('menu') && !/^(INPUT|BUTTON)$/.test((e.target || {}).tagName || '') || e.key === 'Escape') showMenu() })
-  stage.addEventListener('click', function (e) { if (!/BUTTON|INPUT/.test(e.target.tagName)) showMenu() })
+  stage.addEventListener('click', function (e) {
+    if (/BUTTON|INPUT/.test(e.target.tagName)) return
+    var dot = e.target.closest ? e.target.closest('.dot') : null
+    if (dot) { setView(+dot.querySelector('b').textContent); return }
+    if (!EMBED) showMenu()
+  })
 
-  var lock = null
   async function keepAwake() {
-    try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen') } catch (e) { lock = null }
+    try { if (!EMBED && 'wakeLock' in navigator && document.visibilityState === 'visible') await navigator.wakeLock.request('screen') } catch (e) { /* not offered */ }
   }
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { keepAwake(); if (session && counts) poll() } })
-  window.addEventListener('online', function () { if (session) poll() })
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { keepAwake(); if (started) poll() } })
+  window.addEventListener('online', function () { if (started) poll() })
 
   /* ------------------------------------------------------------ start */
   async function start() {
     stopTimers()
     showMessage('جارٍ التحميل…', '')
     try {
-      var me = (await api('/rest/v1/rpc/me', { method: 'POST', body: {} })) || []
-      var m = me[0]
-      if (!m) { saveSession(null); showLogin('هذا الحساب غير مفعّل في المنصة.'); return }
-      if (m.role !== 'screen' && m.role !== 'owner') { saveSession(null); showLogin('هذه الشاشة لحساب «شاشة عرض» أو مدير المنصة فقط.'); return }
-      if (m.must_change_password) { showChangePassword(); return }
+      var m = await allowed()
+      if (!m) { saveSession(null); showLogin('هذه الشاشة لحساب «شاشة عرض» أو مدير المنصة فقط.'); return }
+      if (m.must_change_password && !EMBED) { showChangePassword(); return }
       await load()
-      view = 1
+      started = true
       render()
-      rotateTimer = setInterval(nextView, ROTATE_MS)
+      if (EMBED) try { window.parent.postMessage({ type: 'andalus-screen-view', view: view }, location.origin) } catch (e) { /* not framed */ }
       pollTimer = setInterval(poll, POLL_MS)
       keepAwake()
     } catch (e) {
@@ -385,7 +508,10 @@
     }
   }
 
-  session = loadSession()
-  if (session && session.refresh_token) start()
-  else showLogin()
+  if (EMBED) start()
+  else {
+    session = loadSession()
+    if (session && session.refresh_token) start()
+    else showLogin()
+  }
 })()
