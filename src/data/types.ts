@@ -205,7 +205,7 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports" | "csrPlans"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports" | "csrPlans" | "studentCounts"
 
 /* ------------------------------------------------------------ branch CSR plans, read from «PROJECTS 2027» in each branch file */
 export type CsrPlanStep = { action: string; owner: string; date: string; dateIso: string | null; dateFlag: "before-year" | null; budget: string; budgetNum: number | null; item: string; tech: string; reply: string; row: number }
@@ -534,4 +534,44 @@ export type CsrPartner = {
   note: string
   createdAt: string
   updatedAt: string
+}
+
+/* ------------------------------------------------------------ student numbers («أعداد الطلاب», owner only) */
+/** One branch (or the total) as the uploaded Excel file states it. Rates are fractions (0.111 = 11.1%). */
+export type StudentRow = {
+  name: string
+  current: number
+  newcomers: number
+  /** growth on last year's count; the file marks its basis as preliminary */
+  growth: number | null
+  withdrawalRate: number
+  withdrawn: number
+  occupancy: number
+  capacity: number
+  regular: number | null
+  transferred: number | null
+  graduated: number | null
+  /** last year's student count (the growth basis) */
+  previous: number | null
+  /** current students per stage, in the order of `stageNames` */
+  stages: number[]
+  /** current students per type of study, in the order of `typeNames` */
+  types: number[]
+}
+
+/** One pull from the school system, read from «مؤشرات أعداد الطلاب». The id is the pull date. */
+export type StudentCounts = {
+  id: string
+  /** pull date YYYY-MM-DD */
+  date: string
+  /** school year as written in the file, e.g. 2026-2027 */
+  year: string
+  stageNames: string[]
+  typeNames: string[]
+  branches: StudentRow[]
+  total: StudentRow
+  /** «التعريفات والملاحظات» sheet, word for word */
+  notes: { title: string; text: string }[]
+  fileName: string | null
+  uploadedAt: string
 }

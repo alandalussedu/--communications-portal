@@ -34,6 +34,11 @@ create or replace function public.public_collection(c text) returns boolean
   language sql immutable
   as $$ select c in ('files', 'settings', 'socialAccounts', 'socialReadings', 'events') $$;
 
+-- مجموعات لمدير المنصة وحده (owner): لا يقرؤها ولا يكتبها غيره من الأعضاء، ولو كان محررًا
+create or replace function public.owner_collection(c text) returns boolean
+  language sql immutable
+  as $$ select c in ('studentCounts') $$;
+
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public
   as $$ select role from public.members where user_id = auth.uid() and active $$;
@@ -71,10 +76,10 @@ drop policy if exists docs_read   on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
-create policy docs_read   on public.docs for select to anon, authenticated using (public.public_collection(collection) or public.is_viewer());
-create policy docs_insert on public.docs for insert to authenticated with check (public.is_editor());
-create policy docs_update on public.docs for update to authenticated using (public.is_editor()) with check (public.is_editor());
-create policy docs_delete on public.docs for delete to authenticated using (public.is_editor());
+create policy docs_read   on public.docs for select to anon, authenticated using ((public.public_collection(collection) or public.is_viewer()) and (not public.owner_collection(collection) or public.is_owner()));
+create policy docs_insert on public.docs for insert to authenticated with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
+create policy docs_update on public.docs for update to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner())) with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
+create policy docs_delete on public.docs for delete to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
 
 -- جدول الأعضاء: العضو يرى صفّه، والمدير يرى الجميع. الكتابة عبر الدالة admin-members فقط.
 drop policy if exists members_read on public.members;

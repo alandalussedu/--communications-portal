@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { BranchContacts, CsrPlan, PbxOfficer, PbxReport, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { BranchContacts, CsrPlan, PbxOfficer, PbxReport, StudentCounts, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -75,13 +75,14 @@ export type Data = {
   csrPartners: CsrPartner[]
   pbxOfficers: PbxOfficer[]
   pbxReports: PbxReport[]
+  studentCounts: StudentCounts[]
   csrPlans: CsrPlan[]
   /** «دليل أرقام الفروع»: the settings document «contacts» (public) */
   contacts: BranchContacts | null
 }
 
-const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [], csrPlans: [], contacts: null }
-const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans"]
+const EMPTY: Data = { branches: [], indicators: [], stages: [], files: [], meta: null, syncLog: [], settings: null, alertState: [], socialAccounts: [], socialReadings: [], remedialFiles: [], remedialStages: [], remedialRows: [], remedialMonthly: [], remedialLog: [], remedialSync: [], events: [], competitors: [], competitorsMeta: null, complaintReports: [], csrInitiatives: [], csrPartners: [], pbxOfficers: [], pbxReports: [], csrPlans: [], studentCounts: [], contacts: null }
+const COLLECTIONS: CollectionName[] = ["branches", "indicators", "stages", "files", "meta", "syncLog", "settings", "alertState", "socialAccounts", "socialReadings", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "events", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans", "studentCounts"]
 const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Record<CollectionName, boolean>
 
 /**
@@ -89,7 +90,7 @@ const NONE_LOADED = Object.fromEntries(COLLECTIONS.map((c) => [c, false])) as Re
  * (`{ enc }`) and only become readable after the vault is opened. A document
  * still in plain form (before the move to encryption) passes through as is.
  */
-export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans"]
+export const PROTECTED: CollectionName[] = ["branches", "indicators", "stages", "meta", "syncLog", "alertState", "remedialFiles", "remedialStages", "remedialRows", "remedialMonthly", "remedialLog", "remedialSync", "competitors", "competitorsMeta", "complaintReports", "csrInitiatives", "csrPartners", "pbxOfficers", "pbxReports", "csrPlans", "studentCounts"]
 const PROTECTED_SET = new Set<CollectionName>(PROTECTED)
 
 export type VaultStatus = "loading" | "none" | "locked" | "unlocked" | "unsupported"
@@ -138,6 +139,8 @@ type Store = {
   deleteCsrPartner(id: string): Promise<boolean>
   savePbxReport(r: PbxReport): Promise<boolean>
   deletePbxReport(id: string): Promise<boolean>
+  saveStudentCounts(c: StudentCounts): Promise<boolean>
+  deleteStudentCounts(id: string): Promise<boolean>
   savePbxOfficers(list: PbxOfficer[], removed: string[]): Promise<boolean>
   vault: Vault
   member: Member
@@ -572,6 +575,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [write, putProtected],
   )
   const deletePbxReport = useCallback((id: string) => write((db) => db.doc(`pbxReports/${id}`).delete(), "حُذف تقرير السنترال"), [write])
+  // owner only: the database refuses everyone else (owner_collection in schema.sql)
+  const saveStudentCounts = useCallback(
+    (c: StudentCounts) =>
+      write(async (db) => {
+        const { id, ...body } = c
+        await putProtected(db, "studentCounts", id, body as Record<string, unknown>)
+      }, "حُفظت أعداد الطلاب"),
+    [write, putProtected],
+  )
+  const deleteStudentCounts = useCallback((id: string) => write((db) => db.doc(`studentCounts/${id}`).delete(), "حُذف السحب"), [write])
   const savePbxOfficers = useCallback(
     (list: PbxOfficer[], removed: string[]) =>
       write(async (db) => {
@@ -725,11 +738,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteCsrPartner,
       savePbxReport,
       deletePbxReport,
+      saveStudentCounts,
+      deleteStudentCounts,
       savePbxOfficers,
       vault,
       member,
     }),
-    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, saveCsrInitiative, deleteCsrInitiative, saveCsrPartner, deleteCsrPartner, savePbxReport, deletePbxReport, savePbxOfficers, vault, member],
+    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, saveCsrInitiative, deleteCsrInitiative, saveCsrPartner, deleteCsrPartner, savePbxReport, deletePbxReport, saveStudentCounts, deleteStudentCounts, savePbxOfficers, vault, member],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

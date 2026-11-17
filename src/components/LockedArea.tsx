@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react"
-import { PhoneCall, MessageSquareWarning, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
+import { GraduationCap, PhoneCall, MessageSquareWarning, ClipboardList, Database, Binoculars, Eye, EyeOff, FileBarChart2, KeyRound, LayoutDashboard, Loader2, Lock, ShieldCheck } from "lucide-react"
 import { useStore } from "@/data/store"
 import { useRouter, type Route } from "@/lib/router"
 import { passwordIssues } from "@/lib/vault"
@@ -9,12 +9,13 @@ import { LoginForm } from "./EditorLogin"
 import { Pill, useSlidingPill } from "@/lib/motion"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][] }[] = [
+const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][]; ownerOnly?: boolean }[] = [
   { page: "indicators", label: "رضا العملاء وجودة التواصل", icon: LayoutDashboard, also: ["reports", "alerts", "branch"] },
   { page: "remedial", label: "الخطط العلاجية", icon: ClipboardList },
   { page: "complaints", label: "الشكاوى", icon: MessageSquareWarning },
   { page: "pbx", label: "السنترال", icon: PhoneCall },
   { page: "competitors", label: "دراسة المنافسين", icon: Binoculars },
+  { page: "students", label: "أعداد الطلاب", icon: GraduationCap, ownerOnly: true },
   { page: "builder", label: "التقارير التنفيذية", icon: FileBarChart2 },
   { page: "sources", label: "المصادر", icon: Database },
 ]
@@ -65,9 +66,9 @@ function SubNav() {
   const pill = useSlidingPill<HTMLUListElement>(route.page)
   return (
     <div className="mb-2 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-1.5">
-      <ul ref={pill.ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]" aria-label="صفحات المؤشرات">
+      <ul ref={pill.ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] lg:flex-wrap lg:overflow-visible" aria-label="صفحات المؤشرات">
         <Pill box={pill.box} ready={pill.ready} className="rounded-xl bg-secondary" />
-        {SUB.map((n) => {
+        {SUB.filter((n) => !n.ownerOnly || vault.isOwner).map((n) => {
           const active = route.page === n.page || n.also?.includes(route.page)
           const Icon = n.icon
           return (
