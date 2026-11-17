@@ -27,7 +27,7 @@ def clean(t):
 
 
 def norm_name(t):
-    t = clean(t).replace("أندلس", "").replace("ابها", "أبها").replace("ابحر", "أبحر")
+    t = re.sub(r"^[أا]ندلس", "", clean(t)).replace("ابها", "أبها").replace("ابحر", "أبحر").replace("الاوائل", "الأوائل")
     return re.sub(r"\s+", " ", t).strip()
 
 
