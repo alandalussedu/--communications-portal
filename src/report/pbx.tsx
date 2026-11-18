@@ -12,8 +12,8 @@ import { SMALL_SAMPLE, gradeOf, lastDayOf, pct, ranked, rate, type Grade } from 
 import { PAGE_H, PAGE_W } from "./ReportPages"
 
 const VOICEMAIL_ALERT = 3
-const BAR: Record<Grade, string> = { good: "#1f7a3a", follow: "#b07800", weak: "#c0392b", small: "#bfbfbf", none: "transparent" }
-const CHIP: Record<Grade, { bg: string; fg: string }> = {
+export const BAR: Record<Grade, string> = { good: "#1f7a3a", follow: "#b07800", weak: "#c0392b", small: "#bfbfbf", none: "transparent" }
+export const CHIP: Record<Grade, { bg: string; fg: string }> = {
   good: { bg: "#1f7a3a", fg: "#fff" },
   follow: { bg: "#b07800", fg: "#fff" },
   weak: { bg: "#c0392b", fg: "#fff" },
@@ -24,21 +24,22 @@ const BARS_FIRST = 18
 const BARS_NEXT = 26
 const ROWS_PER_PAGE = 20
 
-const chunk = <T,>(a: T[], n: number): T[][] => (a.length ? Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n)) : [[]])
-const Ltr = ({ children }: { children: ReactNode }) => <bdi dir="ltr">{children}</bdi>
+export const chunk = <T,>(a: T[], n: number): T[][] => (a.length ? Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n)) : [[]])
+export const Ltr = ({ children }: { children: ReactNode }) => <bdi dir="ltr">{children}</bdi>
 
 export const pbxTitle = (r: PbxReport) => `تقرير استجابة مسؤولي التواصل المؤسسي بالفروع للتحويلات المركزية – ${monthLabel(r.month)}`
 
-function Page({ children, first, n, total, generatedAt }: { children: ReactNode; first?: { title: string }; n: number; total: number; generatedAt: Date }) {
+export function Page({ children, first, n, total, generatedAt }: { children: ReactNode; first?: { title: string; sub?: string }; n: number; total: number; generatedAt: Date }) {
   return (
     <div className="report-page relative flex flex-col overflow-hidden bg-white font-sans text-foreground" style={{ width: PAGE_W, height: PAGE_H }} dir="rtl" data-report-page>
-      <div className="flex min-h-0 flex-1 flex-col px-12 pt-10">
+      <div className="flex min-h-0 flex-1 flex-col px-12 pt-10 [&>*]:shrink-0">
         {first && (
           <div className="mb-5 overflow-hidden rounded-xl">
             <div className="flex items-center justify-between gap-6 bg-band px-7 py-5 text-band-foreground">
               <div className="min-w-0">
                 <div className="text-[13px] text-band-soft">إدارة التواصل المؤسسي</div>
                 <h1 className="mt-1 text-[22px] font-extrabold leading-snug">{first.title}</h1>
+                {first.sub && <div className="mt-0.5 text-[14px] font-bold leading-snug text-gold">{first.sub}</div>}
               </div>
               <span className="shrink-0 rounded-lg bg-white px-3 py-2">
                 <img src={LOGO_NAVY} alt="شركة الأندلس التعليمية" style={{ height: 46, width: "auto" }} />
@@ -66,7 +67,7 @@ function Page({ children, first, n, total, generatedAt }: { children: ReactNode;
   )
 }
 
-function H({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
+export function H({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
     <div className="mb-3">
       <h2 className="border-s-4 border-sky ps-2.5 text-[18px] font-extrabold">{children}</h2>
@@ -75,7 +76,7 @@ function H({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   )
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
+export function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div className="rounded-lg border border-t-4 border-t-primary px-4 py-2.5">
       <div className="text-[12px] text-muted-foreground">{label}</div>
@@ -96,7 +97,7 @@ function Chip({ l }: { l: PbxLine }) {
   )
 }
 
-function Legend() {
+export function Legend() {
   const item = (color: string, label: string) => (
     <span className="inline-flex items-center gap-1.5">
       <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
@@ -119,7 +120,7 @@ function Bars({ lines }: { lines: PbxLine[] }) {
       {lines.map((l) => {
         const r = rate(l), g = gradeOf(l)
         return (
-          <div key={l.officer} className="grid items-center gap-3 border-b border-dashed border-border/70 py-[4px]" style={{ gridTemplateColumns: "170px 1fr 62px 62px" }}>
+          <div key={l.officer} className="grid items-center gap-3 border-b border-dashed border-border/70 py-[3px]" style={{ gridTemplateColumns: "170px 1fr 62px 62px" }}>
             <div className="min-w-0">
               <div className="truncate text-[12.5px] font-bold leading-tight">{l.name}</div>
               <div className="truncate text-[10px] leading-tight text-muted-foreground">{l.branch} · {l.school}</div>
@@ -229,7 +230,7 @@ export function pbxPages(report: PbxReport, prev: PbxReport | null, generatedAt 
 
   bars.forEach((part, i) =>
     bodies.push((n, total) => (
-      <Page key={`b${i}`} n={n} total={total} generatedAt={generatedAt} first={i === 0 ? { title: pbxTitle(report) } : undefined}>
+      <Page key={`b${i}`} n={n} total={total} generatedAt={generatedAt} first={i === 0 ? { title: pbxTitle(report), sub: partial ? `يغطي المكالمات من ${formatDate(report.from!)} إلى ${formatDate(report.to!)} فقط، لا الشهر كاملًا` : undefined } : undefined}>
         {i === 0 && (
           <>
             <div className="mb-4 grid grid-cols-3 gap-3">
@@ -237,11 +238,6 @@ export function pbxPages(report: PbxReport, prev: PbxReport | null, generatedAt 
               <Kpi label="محاولات الاتصال" value={formatNumber(t.attempts)} sub={`على ${formatNumber(lines.length)} مسؤول تواصل في ${formatNumber(branches)} فرعًا`} />
               <Kpi label="مكالمات لم يُرد عليها" value={formatNumber(t.unanswered)} sub={`منها ${formatNumber(t.voicemail)} تحوّلت إلى البريد الصوتي`} />
             </div>
-            {partial && (
-              <p className="mb-4 rounded-md bg-sky-soft px-3 py-2 text-[11.5px] text-sky-ink">
-                يغطي هذا التقرير المكالمات من {formatDate(report.from!)} إلى {formatDate(report.to!)} فقط، لا الشهر كاملًا.
-              </p>
-            )}
           </>
         )}
         <H sub={i === 0 ? "مرتبون من الأعلى استجابةً إلى الأدنى. كل شخص يُقاس على تحويلته الخاصة." : undefined}>

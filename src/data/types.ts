@@ -205,7 +205,7 @@ export type Meta = {
   sources: SourceInfo[]
 }
 
-export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports" | "csrPlans" | "studentCounts"
+export type CollectionName = "branches" | "indicators" | "stages" | "files" | "meta" | "syncLog" | "settings" | "alertState" | "socialAccounts" | "socialReadings" | "remedialFiles" | "remedialStages" | "remedialRows" | "remedialMonthly" | "remedialLog" | "remedialSync" | "events" | "competitors" | "competitorsMeta" | "complaintReports" | "csrInitiatives" | "csrPartners" | "pbxOfficers" | "pbxReports" | "pbxBranchReports" | "pbxDirectory" | "csrPlans" | "studentCounts"
 
 /* ------------------------------------------------------------ branch CSR plans, read from «PROJECTS 2027» in each branch file */
 export type CsrPlanStep = { action: string; owner: string; date: string; dateIso: string | null; dateFlag: "before-year" | null; budget: string; budgetNum: number | null; item: string; tech: string; reply: string; row: number }
@@ -263,6 +263,56 @@ export type PbxReport = {
   source: string
   fileName: string | null
   uploadedAt: string
+}
+
+/* ------------------------------------------------------------ PBX (3CX): every branch extension, for editors and the owner only */
+/** One extension's month. Counted like the officers' report: «Waiting» left out, voicemail rows apart. */
+export type PbxExtCount = {
+  ext: string
+  attempts: number
+  answered: number
+  unanswered: number
+  /** unanswered calls that ended in the extension's voicemail (never more than unanswered) */
+  voicemail: number
+  /** seconds each answered call rang before it was picked up */
+  ring: number[]
+  /** the name 3CX shows for the extension (e.g. «J.FAY.Aaalamri.5741»), when it has one */
+  label: string | null
+}
+/** id = YYYY-MM. Counts per extension only: the uploaded file (with callers' numbers) is never stored. */
+export type PbxBranchReport = {
+  id: string
+  month: string
+  from: string | null
+  to: string | null
+  lines: PbxExtCount[]
+  waitingExcluded: number
+  source: string
+  fileName: string | null
+  uploadedAt: string
+}
+/** One extension in «دليل التحويلات» (read-only copy of the sheet). Its branch comes from the number (pbxBranches.ts). */
+export type PbxDirEntry = {
+  ext: string
+  name: string | null
+  title: string | null
+  /** the sheet's section header, without its number range */
+  section: string
+  /** listed under a head-office section */
+  hq: boolean
+  /** other names the sheet gives the same extension (it should have one) */
+  others?: string[]
+}
+/** id = "current". Copied from the sheet by tools/pbx_directory.py; the portal never edits it. */
+export type PbxDirectory = {
+  id: string
+  entries: PbxDirEntry[]
+  /** what the sheet has that needs fixing (duplicate names, ranges that clash...) */
+  issues: string[]
+  source: string
+  /** the sheet's link (kept in the database only, never in the repository) */
+  sourceUrl?: string | null
+  syncedAt: string
 }
 
 /* ------------------------------------------------------------ monthly complaint reports (uploaded Word files) */

@@ -12,7 +12,16 @@
  */
 import type { PbxLine, PbxOfficer } from "@/data/types"
 
-export type PbxRow = { day: string; ext: string; voicemail: boolean; status: "answered" | "unanswered" | "waiting" | "other" }
+export type PbxRow = {
+  day: string
+  ext: string
+  voicemail: boolean
+  status: "answered" | "unanswered" | "waiting" | "other"
+  /** the name 3CX shows for the destination, without the extension («J.FAY.Aaalamri»); null for voicemail or a bare number */
+  label: string | null
+  /** seconds the call rang before it was answered or dropped («Ringing»), when the file has the column */
+  ring: number | null
+}
 export type PbxFile = { rows: PbxRow[]; months: { month: string; count: number }[] }
 
 function decode(buf: ArrayBuffer): string {
@@ -44,6 +53,12 @@ function splitLine(line: string, sep: string): string[] {
 
 export class PbxFormatError extends Error {}
 
+/** «00:01:05» → 65 */
+function seconds(v: string | undefined): number | null {
+  const m = (v ?? "").trim().match(/^(\d+):(\d{2}):(\d{2})$/)
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : null
+}
+
 export function parsePbx(buf: ArrayBuffer): PbxFile {
   const text = decode(buf).replace(/^﻿/, "")
   const lines = text.split(/\r?\n/).filter((l) => l.trim())
@@ -51,7 +66,7 @@ export function parsePbx(buf: ArrayBuffer): PbxFile {
   const sep = lines[0].includes("\t") ? "\t" : lines[0].includes(";") && !lines[0].includes(",") ? ";" : ","
   const head = splitLine(lines[0], sep).map((h) => h.toLowerCase())
   const col = (name: string) => head.findIndex((h) => h === name)
-  const iTime = col("call time"), iDest = col("destination"), iStatus = col("status")
+  const iTime = col("call time"), iDest = col("destination"), iStatus = col("status"), iRing = col("ringing")
   if (iTime < 0 || iDest < 0 || iStatus < 0) throw new PbxFormatError("هذا ليس تقرير مكالمات 3CX: لم تُوجد أعمدة «Call Time» و«Destination» و«Status».")
   const rows: PbxRow[] = []
   const months = new Map<string, number>()
@@ -59,12 +74,22 @@ export function parsePbx(buf: ArrayBuffer): PbxFile {
     const c = splitLine(lines[i], sep)
     const day = (c[iTime] ?? "").slice(0, 10)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue // the «Totals» line and anything else
-    const dest = c[iDest] ?? ""
-    const m = dest.match(/\((\d{2,6})\)\s*$/)
+    const dest = (c[iDest] ?? "").trim()
+    // «Name (1234)», or just «1234» when 3CX has no name for the extension
+    const m = dest.match(/\((\d{2,6})\)\s*$/) ?? dest.match(/^(\d{3,6})$/)
     const s = (c[iStatus] ?? "").toLowerCase()
     months.set(day.slice(0, 7), (months.get(day.slice(0, 7)) ?? 0) + 1)
     if (!m) continue
-    rows.push({ day, ext: m[1], voicemail: /^voicemail/i.test(dest), status: s === "answered" ? "answered" : s === "unanswered" ? "unanswered" : s === "waiting" ? "waiting" : "other" })
+    const voicemail = /^voicemail/i.test(dest)
+    const name = dest.replace(/\s*\(\d{2,6}\)\s*$/, "").trim()
+    rows.push({
+      day,
+      ext: m[1],
+      voicemail,
+      status: s === "answered" ? "answered" : s === "unanswered" ? "unanswered" : s === "waiting" ? "waiting" : "other",
+      label: voicemail || !name || /^\d+$/.test(name) ? null : name,
+      ring: iRing >= 0 ? seconds(c[iRing]) : null,
+    })
   }
   if (!months.size) throw new PbxFormatError("لم تُوجد في الملف مكالمات بتاريخ صحيح.")
   return { rows, months: [...months].map(([month, count]) => ({ month, count })).sort((a, b) => b.count - a.count) }
@@ -96,9 +121,9 @@ function rowsDays(file: PbxFile, month: string) {
 
 /* ------------------------------------------------------------ rating (as in the approved monthly report) */
 export const SMALL_SAMPLE = 5
-export const rate = (l: Pick<PbxLine, "attempts" | "answered">) => (l.attempts ? (l.answered / l.attempts) * 100 : null)
+export const rate = (l: Pick<PbxLine, "attempts" | "answered">): number | null => (l.attempts ? (l.answered / l.attempts) * 100 : null)
 export type Grade = "good" | "follow" | "weak" | "small" | "none"
-export function gradeOf(l: PbxLine): Grade {
+export function gradeOf(l: Pick<PbxLine, "attempts" | "answered">): Grade {
   const r = rate(l)
   if (r === null) return "none"
   if (l.attempts < SMALL_SAMPLE) return "small"

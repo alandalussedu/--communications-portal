@@ -17,6 +17,8 @@ export type Route =
   | { page: "members" }
   | { page: "complaints" }
   | { page: "pbx" }
+  /** «السنترال» tab «الفروع» (editors and the owner) */
+  | { page: "pbx-branches" }
   | { page: "students" }
   | { page: "display" }
   | { page: "contacts" }
@@ -24,10 +26,10 @@ export type Route =
   | { page: "transport"; view?: string }
   | { page: "csr"; tab?: string; id?: string }
 
-const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints", "pbx", "contacts", "students", "display", "whatsapp"] as const
+const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints", "pbx", "pbx-branches", "contacts", "students", "display", "whatsapp"] as const
 
 /** Pages behind the password (the «المؤشرات» tab and everything under it). */
-export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "complaints", "pbx", "students", "display", "builder", "alerts", "sources", "competitors"]
+export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "complaints", "pbx", "pbx-branches", "students", "display", "builder", "alerts", "sources", "competitors"]
 
 /** Only bare tokens survive in the artifact's address, so each page has one. */
 export function routeToken(r: Route): string {

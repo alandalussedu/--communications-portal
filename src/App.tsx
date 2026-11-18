@@ -86,6 +86,8 @@ function lockedPage(route: ReturnType<typeof useRouter>["route"], nonce: number)
       return <ComplaintsPage key={nonce} />
     case "pbx":
       return <PbxPage key={nonce} />
+    case "pbx-branches":
+      return <PbxPage key={nonce} tab="branches" />
     case "students":
       return <StudentsPage key={nonce} />
     case "display":

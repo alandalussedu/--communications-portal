@@ -6,6 +6,7 @@
 --   editor : فريق إدارة التواصل، يرى ويعدّل
 --   owner  : مدير المنصة، كالمحرر ويدير المستخدمين (عبر الدالة admin-members)
 --   screen : شاشة عرض (مثل شاشة غرفة المدير)، تقرأ مجموعات screen_collection فقط ولا ترى أي قسم آخر
+-- مجموعات editor_collection لفريق الإدارة ومدير المنصة فقط: لا يقرؤها مسؤول التواصل ولا الشاشة.
 -- الزائر بلا دخول يرى المجموعات العامة فقط.
 -- الحماية في الخادم: قواعد RLS أدناه هي ما يقرر من يقرأ ماذا، لا الواجهة.
 
@@ -42,6 +43,12 @@ create or replace function public.public_collection(c text) returns boolean
 create or replace function public.owner_collection(c text) returns boolean
   language sql immutable
   as $$ select c in ('studentCounts') $$;
+
+-- مجموعات لفريق الإدارة ومدير المنصة فقط (editor, owner): لا يقرؤها مسؤول التواصل (viewer) ولا الشاشة.
+-- pbxBranchReports وpbxDirectory: تبويب «الفروع» في السنترال، فيه أسماء موظفي الفروع وأداء تحويلاتهم (قرار مدير المنصة)
+create or replace function public.editor_collection(c text) returns boolean
+  language sql immutable
+  as $$ select c in ('pbxBranchReports', 'pbxDirectory') $$;
 
 -- ما تقرؤه حسابات «شاشة» (للقراءة فقط) فوق المجموعات العامة، ولا شيء غيره.
 -- csrPlans لعرض «المسؤولية المجتمعية» وindicators لعرض «رضا العملاء وجودة التواصل» في شاشة العرض (بإذن مدير المنصة)
@@ -87,7 +94,7 @@ drop policy if exists docs_read   on public.docs;
 drop policy if exists docs_insert on public.docs;
 drop policy if exists docs_update on public.docs;
 drop policy if exists docs_delete on public.docs;
-create policy docs_read   on public.docs for select to anon, authenticated using (((public.public_collection(collection) or public.is_viewer()) and (not public.owner_collection(collection) or public.is_owner())) or (public.is_screen() and public.screen_collection(collection)));
+create policy docs_read   on public.docs for select to anon, authenticated using (((public.public_collection(collection) or public.is_viewer()) and (not public.owner_collection(collection) or public.is_owner()) and (not public.editor_collection(collection) or public.is_editor())) or (public.is_screen() and public.screen_collection(collection)));
 create policy docs_insert on public.docs for insert to authenticated with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
 create policy docs_update on public.docs for update to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner())) with check (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));
 create policy docs_delete on public.docs for delete to authenticated using (public.is_editor() and (not public.owner_collection(collection) or public.is_owner()));

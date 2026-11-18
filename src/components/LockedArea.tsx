@@ -13,7 +13,7 @@ const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route
   { page: "indicators", label: "رضا العملاء وجودة التواصل", icon: LayoutDashboard, also: ["reports", "alerts", "branch"] },
   { page: "remedial", label: "الخطط العلاجية", icon: ClipboardList },
   { page: "complaints", label: "الشكاوى", icon: MessageSquareWarning },
-  { page: "pbx", label: "السنترال", icon: PhoneCall },
+  { page: "pbx", label: "السنترال", icon: PhoneCall, also: ["pbx-branches"] },
   { page: "competitors", label: "دراسة المنافسين", icon: Binoculars },
   { page: "students", label: "أعداد الطلاب", icon: GraduationCap, ownerOnly: true },
   { page: "display", label: "شاشة العرض", icon: MonitorPlay, ownerOnly: true },

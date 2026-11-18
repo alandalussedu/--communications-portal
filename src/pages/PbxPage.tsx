@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, type ReactNode } from "react"
-import { FileDown, Loader2, Plus, Trash2, Upload, Users } from "lucide-react"
+import { BookOpen, FileDown, Loader2, Plus, Trash2, Upload, Users } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/data/store"
-import type { PbxLine, PbxOfficer, PbxReport } from "@/data/types"
+import type { PbxBranchReport, PbxLine, PbxOfficer, PbxReport } from "@/data/types"
 import { monthLabel } from "@/data/social"
 import { formatDate, formatNumber } from "@/lib/format"
 import { PbxFormatError, SMALL_SAMPLE, countMonth, gradeOf, lastDayOf, parsePbx, pct, rate, ranked, type Grade, type PbxFile } from "@/lib/pbx"
@@ -10,14 +10,22 @@ import { cn } from "@/lib/utils"
 import { SAVE_ERROR, useDownloads } from "@/lib/downloads"
 import { exportPdf } from "@/report/pdf"
 import { pbxPages, pbxTitle } from "@/report/pbx"
+import { pbxBranchPages, pbxBranchesTitle } from "@/report/pbxBranches"
+import { branchView, countBranchMonth } from "@/lib/pbxBranches"
+import { useRouter } from "@/lib/router"
+import { BranchesView, RateChip, callsWord, extsWord } from "@/pages/pbx/BranchesView"
+import { DirectoryPanel } from "@/pages/pbx/DirectoryPanel"
 import { Gate } from "@/components/Gate"
 import { Banner, PageHeader, Panel, PanelHeader } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 /**
- * «السنترال»: how the branch communication officers answer the calls the central
- * line transfers to them, month by month, from the 3CX call report. Each person
- * is measured on their own extension. Only counts are stored.
+ * «السنترال»: how the branches answer the calls the central line transfers to them,
+ * month by month, from the 3CX call report. Two tabs from one upload:
+ *  - «مسؤولو التواصل»: each communication officer on their own extension(s), for every member;
+ *  - «الفروع»: every branch extension, with names from «دليل التحويلات», for editors and the
+ *    owner only (editor_collection in schema.sql). See pbxBranches.ts.
+ * Only counts are stored.
  */
 
 const GRADE: Record<Grade, { bar: string; chip: string }> = {
@@ -29,25 +37,35 @@ const GRADE: Record<Grade, { bar: string; chip: string }> = {
 }
 const VOICEMAIL_ALERT = 3
 
-export function PbxPage() {
-  const { data, canEdit, deletePbxReport } = useStore()
+export function PbxPage({ tab = "officers" }: { tab?: "officers" | "branches" }) {
+  const { data, canEdit, deletePbxReport, deletePbxBranchReport } = useStore()
+  const { go } = useRouter()
+  // the database refuses the all-branches reports to anyone but editors and the owner
+  const branches = canEdit && tab === "branches"
   const reports = useMemo(() => [...data.pbxReports].sort((a, b) => b.month.localeCompare(a.month)), [data.pbxReports])
+  const breports = useMemo(() => [...data.pbxBranchReports].sort((a, b) => b.month.localeCompare(a.month)), [data.pbxBranchReports])
+  const months = branches ? breports.map((r) => r.month) : reports.map((r) => r.month)
   const [pick, setPick] = useState<string | null>(null)
-  const report = reports.find((r) => r.month === pick) ?? reports[0] ?? null
+  const month = pick && months.includes(pick) ? pick : months[0] ?? null
+  const report = reports.find((r) => r.month === month) ?? null
   const prev = report ? reports.find((r) => r.month < report.month) ?? null : null
-  const [sheet, setSheet] = useState<"upload" | "officers" | null>(null)
+  const breport = breports.find((r) => r.month === month) ?? null
+  const bprev = breport ? breports.find((r) => r.month < breport.month) ?? null : null
+  const current = branches ? breport : report
+  const [sheet, setSheet] = useState<"upload" | "officers" | "directory" | null>(null)
   const downloads = useDownloads()
   const [exporting, setExporting] = useState(false)
   const pagesRef = useRef<HTMLDivElement>(null)
 
   const exportReport = async () => {
-    if (!report || !downloads) return
+    if (!current || !downloads) return
     setExporting(true)
     try {
       // let the hidden pages render before capturing them
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-      const blob = await exportPdf(pagesRef.current!, pbxTitle(report))
-      const name = `تقرير السنترال - ${monthLabel(report.month)}.pdf`
+      const title = branches ? pbxBranchesTitle(breport!) : pbxTitle(report!)
+      const blob = await exportPdf(pagesRef.current!, title)
+      const name = `${branches ? "تقرير الفروع - السنترال" : "تقرير السنترال"} - ${monthLabel(current.month)}.pdf`
       await downloads.save({ filename: name, data: blob })
       toast.success("حُفظ ملف PDF", { description: name })
     } catch (e) {
@@ -59,30 +77,39 @@ export function PbxPage() {
     }
   }
 
+  const removeCurrent = () => {
+    if (!current || !window.confirm(`حذف ${branches ? "تقرير الفروع" : "تقرير المسؤولين"} لشهر ${monthLabel(current.month)}؟`)) return
+    void (branches ? deletePbxBranchReport(current.id) : deletePbxReport(current.id)).then((ok) => ok && setPick(null))
+  }
+
   return (
     <>
       <PageHeader
         eyebrow="الأداء والتطوير"
         title="السنترال"
-        description="استجابة مسؤولي التواصل بالفروع للمكالمات المحوّلة من الخط الموحد. كل شخص يُقاس على تحويلته."
+        description={
+          branches
+            ? "استجابة كل تحويلات الفروع للمكالمات المحوّلة من الخط الموحد، شهريًا. الأسماء من دليل التحويلات."
+            : "استجابة مسؤولي التواصل بالفروع للمكالمات المحوّلة من الخط الموحد. كل شخص يُقاس على تحويلته."
+        }
         actions={
           <>
-            {reports.length > 0 && (
+            {months.length > 0 && (
               <>
                 <label className="sr-only" htmlFor="pbx-month">الشهر</label>
                 <select
                   id="pbx-month"
-                  value={report?.month}
+                  value={month ?? undefined}
                   onChange={(e) => setPick(e.target.value)}
                   className="h-11 min-w-40 rounded-md border border-input bg-card px-3 text-[16px] outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
                 >
-                  {reports.map((r) => (
-                    <option key={r.month} value={r.month}>{monthLabel(r.month)}</option>
+                  {months.map((m) => (
+                    <option key={m} value={m}>{monthLabel(m)}</option>
                   ))}
                 </select>
               </>
             )}
-            {report && downloads !== null && (
+            {current && downloads !== null && (
               <button type="button" onClick={exportReport} disabled={exporting || !downloads} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold hover:bg-accent disabled:opacity-50">
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileDown className="h-4 w-4" aria-hidden="true" />}
                 تصدير PDF
@@ -94,31 +121,53 @@ export function PbxPage() {
                   <Upload className="h-4 w-4" aria-hidden="true" />
                   رفع تقرير 3CX
                 </button>
-                <button type="button" onClick={() => setSheet("officers")} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] hover:bg-accent">
-                  <Users className="h-4 w-4" aria-hidden="true" />
-                  المسؤولون والتحويلات
-                </button>
+                {branches ? (
+                  <button type="button" onClick={() => setSheet("directory")} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] hover:bg-accent">
+                    <BookOpen className="h-4 w-4" aria-hidden="true" />
+                    دليل التحويلات
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setSheet("officers")} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] hover:bg-accent">
+                    <Users className="h-4 w-4" aria-hidden="true" />
+                    المسؤولون والتحويلات
+                  </button>
+                )}
               </>
             )}
           </>
         }
       />
+      {canEdit && (
+        <div role="tablist" aria-label="عرض السنترال" className="mb-5 inline-flex max-w-full gap-1 rounded-2xl border bg-card p-1.5">
+          {([["officers", "مسؤولو التواصل", "pbx"], ["branches", "الفروع", "pbx-branches"]] as const).map(([key, label, page]) => {
+            const on = (key === "branches") === branches
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => !on && go({ page })}
+                className={cn("inline-flex h-10 items-center rounded-xl px-5 text-[15.5px] font-bold transition-colors", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      )}
       <Gate
-        needs={["pbxReports", "pbxOfficers"]}
-        emptyWhen={!report}
+        needs={branches ? ["pbxBranchReports", "pbxOfficers", "pbxDirectory", "pbxReports"] : ["pbxReports", "pbxOfficers"]}
+        emptyWhen={!current}
         emptyTitle="لم يُرفع تقرير بعد"
         emptyBody={canEdit ? "صدّر تقرير المكالمات من 3CX لشهر كامل، ثم ارفعه من زر «رفع تقرير 3CX»." : "يظهر هنا تقرير كل شهر بعد أن يرفعه فريق الإدارة."}
       >
-        {report && <ReportView report={report} prev={prev} />}
-        {report && canEdit && (
+        {branches ? breport && <BranchesView report={breport} prev={bprev} directory={data.pbxDirectory} officers={data.pbxOfficers} officersReport={report} /> : report && <ReportView report={report} prev={prev} />}
+        {current && canEdit && (
           <p className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-            {report.source}
-            {report.fileName && ` · ${report.fileName}`} · حُفظ {formatDate(report.uploadedAt)}
-            <button
-              type="button"
-              onClick={() => window.confirm(`حذف تقرير ${monthLabel(report.month)}؟`) && deletePbxReport(report.id).then((ok) => ok && setPick(null))}
-              className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-bad hover:bg-bad-soft"
-            >
+            {current.source}
+            {current.fileName && ` · ${current.fileName}`} · حُفظ {formatDate(current.uploadedAt)}
+            <button type="button" onClick={removeCurrent} className="inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-bad hover:bg-bad-soft">
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               حذف تقرير الشهر
             </button>
@@ -126,24 +175,27 @@ export function PbxPage() {
         )}
       </Gate>
 
-      {exporting && report && (
+      {exporting && current && (
         <div aria-hidden="true" style={{ position: "fixed", top: 0, left: -20000, pointerEvents: "none" }}>
-          <div ref={pagesRef}>{pbxPages(report, prev)}</div>
+          <div ref={pagesRef}>{branches ? pbxBranchPages(breport!, data.pbxDirectory, data.pbxOfficers) : pbxPages(report!, prev)}</div>
         </div>
       )}
       {canEdit && (
         <Sheet open={sheet !== null} onOpenChange={(o) => !o && setSheet(null)}>
           <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-2xl" dir="rtl">
             <SheetHeader className="pe-8 text-start">
-              <SheetTitle className="text-start text-[22px] font-bold">{sheet === "upload" ? "رفع تقرير 3CX" : "المسؤولون والتحويلات"}</SheetTitle>
+              <SheetTitle className="text-start text-[22px] font-bold">{sheet === "upload" ? "رفع تقرير 3CX" : sheet === "directory" ? "دليل التحويلات" : "المسؤولون والتحويلات"}</SheetTitle>
               <SheetDescription className="text-start text-[15px]">
                 {sheet === "upload"
-                  ? "يُقرأ الملف في متصفحك وتُحفظ أعداد المكالمات لكل مسؤول فقط. الملف وأرقام المتصلين لا تُحفظ."
-                  : "تحويلة كل مسؤول تواصل كما في السنترال. تُحتسب المكالمات على هذه التحويلات فقط."}
+                  ? "يُقرأ الملف في متصفحك وتُحفظ أعداد المكالمات لكل تحويلة فقط. الملف وأرقام المتصلين لا تُحفظ."
+                  : sheet === "directory"
+                    ? "نسخة للاطلاع من ملف دليل التحويلات: منها أسماء أصحاب التحويلات ومسمياتهم في تبويب «الفروع»."
+                    : "تحويلة كل مسؤول تواصل كما في السنترال. تُحتسب المكالمات على هذه التحويلات فقط."}
               </SheetDescription>
             </SheetHeader>
             {sheet === "upload" && <UploadForm onDone={(m) => (setSheet(null), m && setPick(m))} />}
             {sheet === "officers" && <OfficersForm onDone={() => setSheet(null)} />}
+            {sheet === "directory" && <DirectoryPanel directory={data.pbxDirectory} />}
           </SheetContent>
         </Sheet>
       )}
@@ -317,19 +369,34 @@ function AlertRow({ l, right }: { l: PbxLine; right: ReactNode }) {
   )
 }
 
-/* ------------------------------------------------------------ upload */
+/* ------------------------------------------------------------ upload: one file, both reports */
 function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
-  const { data, savePbxReport } = useStore()
+  const { data, savePbxUpload } = useStore()
   const input = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<{ name: string; parsed: PbxFile } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [month, setMonth] = useState<string>("")
+  const [doOfficers, setDoOfficers] = useState(true)
+  const [doBranches, setDoBranches] = useState(true)
   const [saving, setSaving] = useState(false)
   const officers = data.pbxOfficers
   const result = file && month ? countMonth(file.parsed, month, officers) : null
-  const exists = data.pbxReports.some((r) => r.month === month)
+  const bres = useMemo(() => (file && month ? countBranchMonth(file.parsed, month, data.pbxDirectory) : null), [file, month, data.pbxDirectory])
+  const bview = useMemo(
+    () => (bres ? branchView({ id: month, month, from: bres.from, to: bres.to, lines: bres.lines, waitingExcluded: bres.waiting, source: "", fileName: null, uploadedAt: "" }, data.pbxDirectory, officers) : null),
+    [bres, month, data.pbxDirectory, officers],
+  )
+  const existing = data.pbxReports.find((r) => r.month === month) ?? null
+  const bexisting = data.pbxBranchReports.some((r) => r.month === month)
   const partial = result && result.from && result.to && (result.from > `${month}-01` || result.to < lastDayOf(month))
   const noExt = officers.filter((o) => o.active && !o.exts.length)
+
+  // a month that already has an officers report keeps it unless the editor asks to replace it
+  const choose = (m: string) => {
+    setMonth(m)
+    setDoOfficers(!data.pbxReports.some((r) => r.month === m))
+    setDoBranches(true)
+  }
 
   const read = async (f: File | undefined) => {
     setError(null)
@@ -339,26 +406,23 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
     try {
       const parsed = parsePbx(await f.arrayBuffer())
       setFile({ name: f.name, parsed })
-      setMonth(parsed.months[0].month)
+      choose(parsed.months[0].month)
     } catch (e) {
       setError(e instanceof PbxFormatError ? e.message : "تعذّرت قراءة الملف. صدّره من 3CX بصيغة CSV أو TXT.")
     }
   }
 
   const save = async () => {
-    if (!file || !result) return
+    if (!file || !result || !bres || (!doOfficers && !doBranches)) return
     setSaving(true)
-    const ok = await savePbxReport({
-      id: month,
-      month,
-      from: result.from,
-      to: result.to,
-      lines: result.lines,
-      waitingExcluded: result.waiting,
-      source: "تقرير مكالمات 3CX",
-      fileName: file.name,
-      uploadedAt: new Date().toISOString(),
-    })
+    const uploadedAt = new Date().toISOString()
+    const officersReport: PbxReport | null = doOfficers
+      ? { id: month, month, from: result.from, to: result.to, lines: result.lines, waitingExcluded: result.waiting, source: "تقرير مكالمات 3CX", fileName: file.name, uploadedAt }
+      : null
+    const branchesReport: PbxBranchReport | null = doBranches
+      ? { id: month, month, from: bres.from, to: bres.to, lines: bres.lines, waitingExcluded: bres.waiting, source: "تقرير مكالمات 3CX", fileName: file.name, uploadedAt }
+      : null
+    const ok = await savePbxUpload(officersReport, branchesReport)
     setSaving(false)
     if (ok) onDone(month)
   }
@@ -367,7 +431,7 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
     <div className="mt-5 flex flex-col gap-4">
       <ol className="list-decimal space-y-1 ps-5 text-[14px] text-muted-foreground">
         <li>من 3CX: التقارير ← سجل المكالمات، واختر الفترة من أول الشهر إلى آخره.</li>
-        <li>صدّر التقرير (CSV أو TXT) وارفعه هنا كما هو.</li>
+        <li>صدّر التقرير (CSV أو TXT) وارفعه هنا كما هو. يُحسب منه تقرير المسؤولين وتقرير الفروع معًا.</li>
       </ol>
       <input ref={input} type="file" accept=".csv,.txt,text/csv,text/plain" className="sr-only" onChange={(e) => read(e.target.files?.[0])} />
       <button type="button" onClick={() => input.current?.click()} className="flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed bg-muted/30 p-5 text-center hover:bg-accent">
@@ -381,11 +445,11 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
           {noExt.map((o) => o.name).join("، ")}: لن تُحتسب لهم مكالمات حتى تُضاف تحويلاتهم من «المسؤولون والتحويلات».
         </Banner>
       )}
-      {file && result && (
+      {file && result && bres && bview && (
         <>
           <label className="flex flex-col gap-1 text-[14px]">
             <span className="text-muted-foreground">شهر التقرير</span>
-            <select value={month} onChange={(e) => setMonth(e.target.value)} className="h-11 rounded-md border border-input bg-card px-3 text-[16px]">
+            <select value={month} onChange={(e) => choose(e.target.value)} className="h-11 rounded-md border border-input bg-card px-3 text-[16px]">
               {[...file.parsed.months].sort((a, b) => b.month.localeCompare(a.month)).map((m) => (
                 <option key={m.month} value={m.month}>{monthLabel(m.month)} ({formatNumber(m.count)} مكالمة)</option>
               ))}
@@ -396,33 +460,85 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
               فيه مكالمات {monthLabel(month)} من {formatDate(result.from!)} إلى {formatDate(result.to!)} فقط. يُفضّل تصدير الشهر كاملًا.
             </Banner>
           )}
-          <div className="overflow-hidden rounded-xl border">
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="border-b bg-muted/50 text-muted-foreground">
-                  <th className="px-3 py-2 text-start font-medium">المسؤول</th>
-                  <th className="px-3 py-2 text-end font-medium">المحاولات</th>
-                  <th className="px-3 py-2 text-end font-medium">رد</th>
-                  <th className="px-3 py-2 text-end font-medium">بريد صوتي</th>
-                  <th className="px-3 py-2 text-end font-medium">النسبة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked(result.lines).map((l) => (
-                  <tr key={l.officer} className="border-b last:border-0">
-                    <td className="px-3 py-1.5">{l.name} <span className="text-[12px] text-muted-foreground">· {l.branch}</span></td>
-                    <td className="num px-3 py-1.5 text-end">{formatNumber(l.attempts)}</td>
-                    <td className="num px-3 py-1.5 text-end">{formatNumber(l.answered)}</td>
-                    <td className="num px-3 py-1.5 text-end">{formatNumber(l.voicemail)}</td>
-                    <td className="num px-3 py-1.5 text-end font-bold">{pct(rate(l))}</td>
+          <fieldset className="flex flex-col gap-3 rounded-xl border p-3.5">
+            <legend className="px-1 text-[14px] text-muted-foreground">ما يُحفظ من هذا الملف</legend>
+            <label className="flex items-start gap-2.5">
+              <input type="checkbox" checked={doBranches} onChange={(e) => setDoBranches(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]" />
+              <span className="min-w-0">
+                <b className="text-[15px]">تقرير كل الفروع</b>
+                <span className="block text-[13px] leading-snug text-muted-foreground">
+                  {formatNumber(bview.total.attempts)} مكالمة محوّلة إلى {extsWord(bview.total.exts)} في {formatNumber(bview.total.branches)} فرعًا، ونسبة الرد <bdi dir="ltr">{pct(rate(bview.total))}</bdi>.
+                  {bexisting && " يستبدل تقرير الفروع المحفوظ لهذا الشهر."}
+                  {!data.pbxDirectory && " دليل التحويلات لم يُنسخ بعد: تظهر الأرقام بلا أسماء."}
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2.5">
+              <input type="checkbox" checked={doOfficers} onChange={(e) => setDoOfficers(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]" />
+              <span className="min-w-0">
+                <b className="text-[15px]">تقرير مسؤولي التواصل</b>
+                <span className="block text-[13px] leading-snug text-muted-foreground">
+                  {existing
+                    ? doOfficers
+                      ? `سيُستبدل التقرير المحفوظ لهذا الشهر (${existing.source}).`
+                      : `يوجد تقرير محفوظ لهذا الشهر (${existing.source})، ويبقى كما هو ما لم تختر استبداله.`
+                    : `${formatNumber(result.lines.length)} مسؤول تواصل على تحويلاتهم.`}
+                </span>
+              </span>
+            </label>
+          </fieldset>
+          {doOfficers && (
+            <div className="overflow-hidden rounded-xl border">
+              <table className="w-full text-[14px]">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-muted-foreground">
+                    <th className="px-3 py-2 text-start font-medium">المسؤول</th>
+                    <th className="px-3 py-2 text-end font-medium">المحاولات</th>
+                    <th className="px-3 py-2 text-end font-medium">رد</th>
+                    <th className="px-3 py-2 text-end font-medium">بريد صوتي</th>
+                    <th className="px-3 py-2 text-end font-medium">النسبة</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {ranked(result.lines).map((l) => (
+                    <tr key={l.officer} className="border-b last:border-0">
+                      <td className="px-3 py-1.5">{l.name} <span className="text-[12px] text-muted-foreground">· {l.branch}</span></td>
+                      <td className="num px-3 py-1.5 text-end">{formatNumber(l.attempts)}</td>
+                      <td className="num px-3 py-1.5 text-end">{formatNumber(l.answered)}</td>
+                      <td className="num px-3 py-1.5 text-end">{formatNumber(l.voicemail)}</td>
+                      <td className="num px-3 py-1.5 text-end font-bold">{pct(rate(l))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {doBranches && (
+            <div className="overflow-hidden rounded-xl border">
+              <table className="w-full text-[14px]">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-muted-foreground">
+                    <th className="px-3 py-2 text-start font-medium">الفرع</th>
+                    <th className="px-3 py-2 text-end font-medium">المكالمات</th>
+                    <th className="px-3 py-2 text-end font-medium">رد</th>
+                    <th className="px-3 py-2 text-end font-medium">النسبة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bview.branches.filter((b) => b.attempts > 0).map((b) => (
+                    <tr key={b.name} className="border-b last:border-0">
+                      <td className="px-3 py-1.5">{b.name} <span className="text-[12px] text-muted-foreground">· {callsWord(b.attempts)}</span></td>
+                      <td className="num px-3 py-1.5 text-end">{formatNumber(b.attempts)}</td>
+                      <td className="num px-3 py-1.5 text-end">{formatNumber(b.answered)}</td>
+                      <td className="px-3 py-1.5 text-end"><RateChip t={b} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           {result.waiting > 0 && <p className="text-[13px] text-muted-foreground">تُستبعد {formatNumber(result.waiting)} مكالمة «Waiting».</p>}
-          {exists && <Banner tone="warn" title={`يوجد تقرير محفوظ لشهر ${monthLabel(month)}`}>الحفظ يستبدله بهذا الملف.</Banner>}
-          <button type="button" disabled={saving} onClick={save} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          <button type="button" disabled={saving || (!doOfficers && !doBranches)} onClick={save} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
             {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
             حفظ تقرير {monthLabel(month)}
           </button>

@@ -35,6 +35,9 @@
   --warn-soft: 40 88% 91%;
   --bad: 4 70% 42%;
   --bad-soft: 5 75% 94%;
+  /* السنترال · الفروع: officers vs the rest of the staff (checked for colour-blind separation) */
+  --pbx-off: #3b3bb0;
+  --pbx-oth: #0099db;
   --radius: 0.625rem;
 }
 @media (prefers-color-scheme: dark) {
@@ -69,6 +72,8 @@
     --warn-soft: 36 60% 15%;
     --bad: 4 82% 70%;
     --bad-soft: 4 50% 17%;
+    --pbx-off: #7a6ff0;
+    --pbx-oth: #1aa0d0;
     color-scheme: dark;
   }
 }
@@ -103,6 +108,8 @@
   --warn-soft: 36 60% 15%;
   --bad: 4 82% 70%;
   --bad-soft: 4 50% 17%;
+  --pbx-off: #7a6ff0;
+  --pbx-oth: #1aa0d0;
   color-scheme: dark;
 }
 
