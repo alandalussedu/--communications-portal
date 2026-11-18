@@ -618,18 +618,12 @@
       return '<li><div class="nm"><b><span class="xt">' + L(esc(x.l.ext)) + '</span>' + esc(who(x)) + (x.o ? ' <i class="tag">مسؤول التواصل</i>' : '') + '</b><span>' + esc(x.p[0] + ' · ' + x.p[1] + (role(x) && !x.o ? ' · ' + role(x) : '')) + '</span></div>' +
         '<span class="v neg">' + num(x.l.unanswered) + '</span><span class="vs">بلا رد<br>من ' + num(x.l.attempts) + '</span></li>'
     }).join('') + (fl.length > shown.length ? '<li class="more">و' + (fl.length - shown.length) + ' تحويلات أخرى في تبويب السنترال</li>' : '') + '</ul>' : '<p class="none">لا توجد تحويلة لم يُرد فيها على ' + PBX_FOLLOW + ' مكالمات أو أكثر</p>'
-    var hqCard = ''
-    if (v.hq) {
-      var top = v.hq.rows.slice().sort(function (a, b) { return b.l.attempts - a.l.attempts })[0], hr = pbxRate(v.hq.t)
-      hqCard = '<div class="card hqc"><h2>الإدارة العامة <span>خارج ترتيب الفروع</span></h2><p class="hqr"><b class="g-' + pbxGrade(v.hq.t) + '">' + (hr === null ? '—' : pct(hr)) + '</b>رد على ' + num(v.hq.t.ans) + ' من ' + num(v.hq.t.att) + ' مكالمة</p>' +
-        (top ? '<p class="hqt"><span class="xt">' + L(esc(top.l.ext)) + '</span>' + esc(top.e && top.e.title ? top.e.title : who(top)) + ' · رد على ' + num(top.l.answered) + ' من ' + num(top.l.attempts) + '</p>' : '') + '</div>'
-    }
     return header() + kpis +
       '<section class="body b6"><div class="card big"><h2>ترتيب الفروع حسب نسبة الرد <span>كل تحويلات الفرع' + (pv ? ' · الفرق عن ' + esc(monthWord(prev.month)) + ' بالنقاط' : '') + '</span></h2>' +
       '<div class="rrow rh"><span class="n">الفرع</span><span class="tw"></span><b>نسبة الرد</b><small>رد / المكالمات</small>' + (pv ? '<span class="dlt">عن ' + esc(monthWord(prev.month)) + '</span>' : '') + '</div>' +
       '<div class="bars">' + rows + '</div>' +
       keys([['ok', 'جيدة: ' + L('70%') + ' فأكثر'], ['warn', 'متابعة: ' + L('50–70%')], ['bad', 'ضعيفة: أقل من ' + L('50%')], ['sm', 'أقل من ' + PBX_SMALL + ' مكالمات']]) + '</div>' +
-      '<div class="col"><div class="card"><h2>تحويلات تحتاج متابعة <span>' + PBX_FOLLOW + ' مكالمات بلا رد أو أكثر</span></h2>' + flist + '</div>' + hqCard + '</div></section>'
+      '<div class="col"><div class="card"><h2>تحويلات تحتاج متابعة <span>' + PBX_FOLLOW + ' مكالمات بلا رد أو أكثر</span></h2>' + flist + '</div></div></section>'
   }
 
   /* ------------------------------------------------------------ render and control */
