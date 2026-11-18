@@ -1,15 +1,15 @@
 /*
  * شاشة العرض (للتلفزيون في غرفة المدير ولتبويب «شاشة العرض» في المنصة).
- * ستة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
- * التواصل الاجتماعي حسب المدارس، قنوات الواتساب، السنترال (استجابة كل تحويلات الفروع).
+ * سبعة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
+ * التواصل الاجتماعي حسب المدارس، قنوات الواتساب، السنترال للفروع، السنترال لمسؤولي التواصل.
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
  * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
  *
  * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة) عبر Supabase Auth REST وتحفظ جلستها.
  * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
  * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
- * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators وpbxBranchReports وpbxDirectory
- * وpbxOfficers والمجموعات العامة (screen_collection).
+ * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators وpbxBranchReports وpbxOfficers
+ * وpbxReports والمجموعات العامة (screen_collection).
  * الرابط والمفتاح العام (publishable) عامّان بطبيعتهما كما في src/config.ts.
  */
 (function () {
@@ -21,9 +21,9 @@
   var VIEW_STORE = 'andalus-screen-view'
   var LEVELS = { wdGood: 0.08, wdFollow: 0.12, ocHigh: 0.85, ocGood: 0.7 } // اعتمدها مدير المنصة
   var EMBED = /[?&]embed=1/.test(location.search)
-  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال']]
-  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع']
-  var HINTS = ['الإشغال والانسحاب والمستهدف', 'وجودة التواصل لكل فرع', 'خطط الفروع والاعتماد', 'حسب المدارس والشركة', 'المشتركون لكل قناة', 'استجابة كل تحويلات الفروع']
+  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال · الفروع'], [7, 'السنترال · المسؤولون']]
+  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع', 'السنترال · مسؤولو التواصل']
+  var HINTS = ['الإشغال والانسحاب والمستهدف', 'وجودة التواصل لكل فرع', 'خطط الفروع والاعتماد', 'حسب المدارس والشركة', 'المشتركون لكل قناة', 'استجابة كل تحويلات الفروع', 'كل مسؤول على تحويلته']
   var N = VIEWS.length
   var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
   var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
@@ -32,8 +32,7 @@
   var app = document.getElementById('app')
   var stage = document.getElementById('stage')
   var session = null
-  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [], pbxReports: [], pbxOfficers: [] } }
-  var pbxDir = null, pbxDirAt = 0 // «دليل التحويلات» is large and rarely changes: read at most every 30 minutes
+  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [], pbxReports: [], pbxOfficers: [], officerReports: [] } }
   var data = EMPTY_DATA()
   var view = 1
   var online = true
@@ -193,7 +192,7 @@
       api('/rest/v1/docs?collection=eq.indicators&select=id,data'),
       api('/rest/v1/docs?collection=eq.pbxBranchReports&select=id,data&order=id.desc&limit=2'),
       api('/rest/v1/docs?collection=eq.pbxOfficers&select=id,data'),
-      !pbxDir || Date.now() - pbxDirAt > 30 * 60000 ? api('/rest/v1/docs?collection=eq.pbxDirectory&id=eq.current&select=id,data') : null,
+      api('/rest/v1/docs?collection=eq.pbxReports&select=id,data&order=id.desc&limit=2'),
     ])
     var rows = function (r) { return (r || []).map(function (x) { var d = x.data || {}; d.id = x.id; return d }) }
     var counts = rows(res[0]).filter(function (d) { return d.date && d.branches && d.total })
@@ -201,8 +200,10 @@
     var targets = rows(res[0]).filter(function (d) { return d.kind === 'target' && d.year && d.branches })
     var reports = rows(res[5]).filter(function (d) { return d.month && d.lines })
     reports.sort(function (a, b) { return a.month < b.month ? 1 : a.month > b.month ? -1 : 0 })
-    if (res[7]) { pbxDir = rows(res[7])[0] || null; pbxDirAt = Date.now() }
-    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]), pbxReports: reports.slice(0, 2), pbxOfficers: rows(res[6]) }
+    var byMonth = function (a, b) { return a.month < b.month ? 1 : a.month > b.month ? -1 : 0 }
+    var oreps = rows(res[7]).filter(function (d) { return d.month && d.lines })
+    oreps.sort(byMonth)
+    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]), pbxReports: reports.slice(0, 2), pbxOfficers: rows(res[6]), officerReports: oreps.slice(0, 2) }
     online = true
     lastOk = new Date()
     var changed = JSON.stringify(next) !== JSON.stringify(data)
@@ -226,6 +227,12 @@
       var rp = data.pbxReports[0]
       if (!rp) return 'تقرير مكالمات 3CX'
       return 'تقرير مكالمات 3CX · <b>' + esc(fmtMonth(rp.month)) + '</b>' + (pbxPartial(rp) ? ' · من ' + (+rp.from.slice(8, 10)) + ' إلى ' + esc(fmtDate(rp.to)) + ' فقط' : '')
+    }
+    if (view === 7) {
+      var ro = data.officerReports[0]
+      if (!ro) return 'تقرير مكالمات 3CX'
+      var src = ro.source && ro.source.indexOf('3CX') < 0 ? ' · ' + esc(ro.source) : ''
+      return 'استجابة مسؤولي التواصل على تحويلاتهم · <b>' + esc(fmtMonth(ro.month)) + '</b>' + (pbxPartial(ro) ? ' · من ' + (+ro.from.slice(8, 10)) + ' إلى ' + esc(fmtDate(ro.to)) + ' فقط' : src)
     }
     var m = latestMonth()
     if (view === 4) return 'حسابات المدارس والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
@@ -545,7 +552,7 @@
   ]
   var PBX_TOP = { '1111': 1, '2222': 1, '3333': 1, '4444': 1, '5555': 1, '6666': 1, '9999': 1 }
   var PBX_ORDER = ['الزهراء', 'الروضة', 'الحمدانية', 'مكة', 'الطائف', 'أبها', 'خميس مشيط', 'الجوف', 'نجران', 'الشاطئ العالمية', 'الشاطئ موهبة', 'الفيحاء', 'المنار', 'أبحر', 'الرياض']
-  var PBX_SMALL = 5, PBX_FOLLOW = 5
+  var PBX_SMALL = 5
   function pbxPlace(ext, entry) {
     if (PBX_TOP[ext]) return [HQ, 'الإدارة العليا']
     var n = +ext
@@ -562,68 +569,117 @@
   function cnt(n, one, two, few, many) { return n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? num(n) + ' ' + few : num(n) + ' ' + many }
   /** the month grouped like the portal's «الفروع» tab (src/lib/pbxBranches.ts branchView) */
   function pbxView(rep) {
-    var dir = {}, off = {}
-    ;((pbxDir && pbxDir.entries) || []).forEach(function (e) { dir[e.ext] = e })
+    var off = {}
     data.pbxOfficers.forEach(function (o) { if (o.active !== false) (o.exts || []).forEach(function (x) { off[x] = o }) })
-    var groups = {}, hq = null, tot = pbxZero(), offT = pbxZero(), othT = pbxZero(), ring = [], follow = []
+    var groups = {}, tot = pbxZero(), offT = pbxZero(), othT = pbxZero(), ring = []
     ;(rep.lines || []).forEach(function (l) {
-      var e = dir[l.ext] || null, p = pbxPlace(l.ext, e)
-      if (!p) return
-      var row = { l: l, e: e, p: p, o: off[l.ext] || null }
-      if (p[0] === HQ) { if (!hq) hq = { t: pbxZero(), rows: [] }; pbxAdd(hq.t, l); hq.rows.push(row); return }
+      var p = pbxPlace(l.ext, null)
+      if (!p || p[0] === HQ) return // head office is not one of the branches
       if (!groups[p[0]]) groups[p[0]] = pbxZero()
-      pbxAdd(groups[p[0]], l); pbxAdd(tot, l); pbxAdd(row.o ? offT : othT, l)
+      pbxAdd(groups[p[0]], l); pbxAdd(tot, l); pbxAdd(off[l.ext] ? offT : othT, l)
       ;(l.ring || []).forEach(function (x) { ring.push(x) })
-      if ((l.unanswered || 0) >= PBX_FOLLOW) follow.push(row)
     })
     var tier = function (b) { return b.att === 0 ? 2 : b.att < PBX_SMALL ? 1 : 0 }
     var branches = PBX_ORDER.map(function (n) { var g = groups[n] || pbxZero(); g.name = n; return g })
     branches.sort(function (a, b) { return tier(a) - tier(b) || (pbxRate(b) || -1) - (pbxRate(a) || -1) || b.att - a.att || PBX_ORDER.indexOf(a.name) - PBX_ORDER.indexOf(b.name) })
-    follow.sort(function (a, b) { return b.l.unanswered - a.l.unanswered || b.l.attempts - a.l.attempts || +a.l.ext - +b.l.ext })
     ring.sort(function (a, b) { return a - b })
     var mid = Math.floor(ring.length / 2)
-    return { tot: tot, off: offT, oth: othT, branches: branches, hq: hq, follow: follow, live: branches.filter(function (b) { return b.att > 0 }).length,
+    return { tot: tot, off: offT, oth: othT, branches: branches, live: branches.filter(function (b) { return b.att > 0 }).length,
       ring: ring.length ? (ring.length % 2 ? ring[mid] : (ring[mid - 1] + ring[mid]) / 2) : null }
   }
+  function pbxDelta(d) { return L((d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d * 100).toFixed(0)) }
+  function pbxCmp(a, b) { return a && b && a.att >= PBX_SMALL && b.att >= PBX_SMALL ? pbxRate(a) - pbxRate(b) : null }
+  function pbxChip(d, prev) { return d === null ? '' : '<i class="chip ' + (d >= 0 ? 'ok' : 'bad') + '">' + L((d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d * 100).toFixed(1)) + ' عن ' + esc(monthWord(prev.month)) + '</i>' }
+  function pbxKeys() { return keys([['ok', 'جيدة: ' + L('70%') + ' فأكثر'], ['warn', 'متابعة: ' + L('50–70%')], ['bad', 'ضعيفة: أقل من ' + L('50%')], ['sm', 'أقل من ' + PBX_SMALL + ' محاولات']]) }
   function view6() {
     var reps = data.pbxReports
     if (!reps.length) return empty('لم يُرفع تقرير السنترال بعد', 'يُرفع تقرير مكالمات 3CX من تبويب السنترال في المنصة.')
     var cur = reps[0], prev = reps[1] || null
     var v = pbxView(cur), pv = prev ? pbxView(prev) : null, t = v.tot, r = pbxRate(t)
-    var cmp = function (a, b) { return a && b && a.att >= PBX_SMALL && b.att >= PBX_SMALL ? pbxRate(a) - pbxRate(b) : null }
-    var dTot = pv ? cmp(t, pv.tot) : null
-    var gcls = function (x) { var g = pbxGrade(x); return g === 'ok' ? 'pos' : g === 'bad' ? 'neg' : g === 'warn' ? 'wrn' : '' }
-    var share = t.att ? Math.round(v.off.att / t.att * 100) : 0
     var sec = v.ring === null ? null : Math.round(v.ring)
     var kpis = '<section class="kpis">' +
-      '<div class="k hero h6"><span>نسبة الرد في الفروع</span><b>' + (r === null ? '—' : pct(r)) +
-        (dTot !== null ? '<i class="chip ' + (dTot >= 0 ? 'ok' : 'bad') + '">' + L((dTot > 0 ? '+' : dTot < 0 ? '−' : '') + Math.abs(dTot * 100).toFixed(1)) + ' عن ' + esc(monthWord(prev.month)) + '</i>' : '') +
+      '<div class="k hero h6"><span>نسبة الرد في الفروع</span><b>' + (r === null ? '—' : pct(r)) + (pv ? pbxChip(pbxCmp(t, pv.tot), prev) : '') +
         '</b><small>رد على ' + num(t.ans) + ' من ' + num(t.att) + ' مكالمة محوّلة</small></div>' +
       '<div class="k"><span>المكالمات المحوّلة</span><b>' + num(t.att) + '</b><small>إلى ' + cnt(t.exts, 'تحويلة واحدة', 'تحويلتين', 'تحويلات', 'تحويلة') + ' في ' + cnt(v.live, 'فرع واحد', 'فرعين', 'فروع', 'فرعًا') + '</small></div>' +
       '<div class="k"><span>لم يُرد عليها</span><b>' + num(t.un) + '</b><small>منها ' + num(t.vm) + ' انتهت في البريد الصوتي</small></div>' +
-      '<div class="k"><span>سرعة الرد</span><b>' + (sec === null ? '—' : num(sec) + '<span class="unit">' + (sec >= 3 && sec <= 10 ? 'ثوانٍ' : 'ثانية') + '</span>') + '</b><small>' + (sec === null ? 'لا يحمل الملف مدة الرنين' : 'نصف المكالمات المُجابة رُد عليها خلالها أو أقل') + '</small></div>' +
-      '<div class="k"><span>الرد: المسؤولون · البقية</span><b class="duo"><span class="' + gcls(v.off) + '">' + (v.off.att ? L((pbxRate(v.off) * 100).toFixed(0) + '%') : '—') + '</span><span class="sep">/</span><span class="' + gcls(v.oth) + '">' + (v.oth.att ? L((pbxRate(v.oth) * 100).toFixed(0) + '%') : '—') + '</span></b>' +
-        '<small>استقبل مسؤولو التواصل ' + L(share + '%') + ' من المكالمات</small></div></section>'
+      '<div class="k"><span>سرعة الرد</span><b>' + (sec === null ? '—' : num(sec) + '<span class="unit">' + (sec >= 3 && sec <= 10 ? 'ثوانٍ' : 'ثانية') + '</span>') + '</b><small>' + (sec === null ? 'لا يحمل الملف مدة الرنين' : 'نصف المكالمات المُجابة رُد عليها خلالها أو أقل') + '</small></div></section>'
     var rows = v.branches.map(function (b) {
       var g = pbxGrade(b), br = pbxRate(b)
-      var p = pv ? pv.branches.filter(function (x) { return x.name === b.name })[0] : null, d = cmp(b, p)
-      var dl = pv ? '<span class="dlt ' + (d === null ? 'no' : d > 0 ? 'up' : d < 0 ? 'dn' : 'no') + '">' + (d === null ? '—' : L((d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d * 100).toFixed(0))) + '</span>' : ''
+      var p = pv ? pv.branches.filter(function (x) { return x.name === b.name })[0] : null, d = pbxCmp(b, p)
+      var dl = pv ? '<span class="dlt ' + (d === null ? 'no' : d > 0 ? 'up' : d < 0 ? 'dn' : 'no') + '">' + (d === null ? '—' : pbxDelta(d)) + '</span>' : ''
       return '<div class="rrow"><span class="n">' + esc(b.name) + '</span><span class="tw"><span class="tr">' + (br === null ? '' : '<i class="' + g + '" style="width:' + Math.max(br * 100, 2).toFixed(1) + '%"></i>') + '</span></span>' +
         '<b class="g-' + g + '">' + (br === null ? '—' : pct(br)) + '</b><small>' + (b.att ? num(b.ans) + ' من ' + num(b.att) : 'لا تحويلات') + '</small>' + dl + '</div>'
     }).join('')
-    var who = function (x) { return x.o ? x.o.name : x.e && x.e.name ? x.e.name : x.e ? 'بلا اسم في الدليل' : 'غير موجود في الدليل' }
-    var role = function (x) { return x.e && x.e.title ? x.e.title : x.o ? 'مسؤول التواصل' : '' }
-    var fl = v.follow, shown = fl.length > 5 ? fl.slice(0, 4) : fl
-    var flist = fl.length ? '<ul class="list flw">' + shown.map(function (x) {
-      return '<li><div class="nm"><b><span class="xt">' + L(esc(x.l.ext)) + '</span>' + esc(who(x)) + (x.o ? ' <i class="tag">مسؤول التواصل</i>' : '') + '</b><span>' + esc(x.p[0] + ' · ' + x.p[1] + (role(x) && !x.o ? ' · ' + role(x) : '')) + '</span></div>' +
-        '<span class="v neg">' + num(x.l.unanswered) + '</span><span class="vs">بلا رد<br>من ' + num(x.l.attempts) + '</span></li>'
-    }).join('') + (fl.length > shown.length ? '<li class="more">و' + (fl.length - shown.length) + ' تحويلات أخرى في تبويب السنترال</li>' : '') + '</ul>' : '<p class="none">لا توجد تحويلة لم يُرد فيها على ' + PBX_FOLLOW + ' مكالمات أو أكثر</p>'
     return header() + kpis +
       '<section class="body b6"><div class="card big"><h2>ترتيب الفروع حسب نسبة الرد <span>كل تحويلات الفرع' + (pv ? ' · الفرق عن ' + esc(monthWord(prev.month)) + ' بالنقاط' : '') + '</span></h2>' +
       '<div class="rrow rh"><span class="n">الفرع</span><span class="tw"></span><b>نسبة الرد</b><small>رد / المكالمات</small>' + (pv ? '<span class="dlt">عن ' + esc(monthWord(prev.month)) + '</span>' : '') + '</div>' +
-      '<div class="bars">' + rows + '</div>' +
-      keys([['ok', 'جيدة: ' + L('70%') + ' فأكثر'], ['warn', 'متابعة: ' + L('50–70%')], ['bad', 'ضعيفة: أقل من ' + L('50%')], ['sm', 'أقل من ' + PBX_SMALL + ' مكالمات']]) + '</div>' +
-      '<div class="col"><div class="card"><h2>تحويلات تحتاج متابعة <span>' + PBX_FOLLOW + ' مكالمات بلا رد أو أكثر</span></h2>' + flist + '</div></div></section>'
+      '<div class="bars">' + rows + '</div>' + pbxKeys() + '</div>' +
+      '<div class="col">' + whoCard(v, pv, prev) + '</div></section>'
+  }
+  /** officers (by the portal's officers list) against the rest of the branch extensions */
+  function whoCard(v, pv, prev) {
+    var t = v.tot
+    if (!t.att) return '<div class="card"><h2>من استقبل المكالمات المحوّلة؟</h2><p class="none">لا مكالمات محوّلة هذا الشهر</p></div>'
+    var po = Math.round(v.off.att / t.att * 100), pt = 100 - po
+    var side = function (key, label, x, px, share) {
+      var r = pbxRate(x), d = pbxCmp(x, px)
+      return '<div class="wfig ' + key + '"><p class="wl"><em></em>' + label + '</p>' +
+        '<b class="g-' + pbxGrade(x) + '">' + (r === null ? '—' : pct(r)) + '</b>' +
+        '<p class="ws">رد على ' + num(x.ans) + ' من ' + num(x.att) + '</p>' +
+        '<p class="ws">' + L(share + '%') + ' من المكالمات · ' + cnt(x.exts, 'تحويلة واحدة', 'تحويلتين', 'تحويلات', 'تحويلة') + '</p>' +
+        (d === null ? '' : '<p class="wd ' + (d >= 0 ? 'pos' : 'neg') + '">' + pbxDelta(d) + ' نقطة عن ' + esc(monthWord(prev.month)) + '</p>') + '</div>'
+    }
+    var say = v.off.att && v.oth.att ? '<p class="wsay">ذهبت <b>' + L(pt + '%') + '</b> من المكالمات المحوّلة إلى موظفين ليسوا مسؤولي تواصل، ونسبة الرد عندهم <b>' + pct(pbxRate(v.oth)) + '</b> مقابل <b>' + pct(pbxRate(v.off)) + '</b> عند مسؤولي التواصل.</p>' : ''
+    return '<div class="card who"><h2>من استقبل المكالمات المحوّلة؟ <span>حسب قائمة مسؤولي التواصل في المنصة</span></h2>' +
+      '<div class="wtop"><p class="wlab"><span><em class="o"></em>مسؤولو التواصل · ' + num(v.off.att) + ' مكالمة · <b>' + L(po + '%') + '</b></span><span><em class="t"></em>بقية الموظفين · ' + num(v.oth.att) + ' مكالمة · <b>' + L(pt + '%') + '</b></span></p>' +
+      '<div class="wbar"><i class="o" style="width:' + po + '%"></i><i class="t" style="width:' + pt + '%"></i></div></div>' +
+      '<div class="wfigs">' + side('o', 'مسؤولو التواصل', v.off, pv && pv.off, po) + side('t', 'بقية الموظفين', v.oth, pv && pv.oth, pt) + '</div>' + say + '</div>'
+  }
+
+  /* ------------------------------------------------------------ 7 · السنترال: مسؤولو التواصل (pbxReports، كما في تبويب «مسؤولو التواصل») */
+  function oRate(l) { return l.attempts ? l.answered / l.attempts : null }
+  function view7() {
+    var reps = data.officerReports
+    if (!reps.length) return empty('لم يُرفع تقرير المسؤولين بعد', 'يُرفع تقرير مكالمات 3CX من تبويب السنترال في المنصة.')
+    var cur = reps[0], prev = reps[1] || null
+    var lines = (cur.lines || []).slice().sort(function (a, b) {
+      var ra = oRate(a), rb = oRate(b), tier = function (l) { return !l.attempts ? 2 : l.attempts < PBX_SMALL ? 1 : 0 }
+      return tier(a) - tier(b) || (rb === null ? -1 : rb) - (ra === null ? -1 : ra) || b.attempts - a.attempts || (a.name < b.name ? -1 : 1)
+    })
+    var sum = function (ls) { var x = pbxZero(); ls.forEach(function (l) { pbxAdd(x, l) }); return x }
+    var t = sum(lines), pt = prev ? sum(prev.lines || []) : null, r = pbxRate(t)
+    var branches = {}; lines.forEach(function (l) { branches[l.branch] = 1 })
+    var enough = lines.filter(function (l) { return l.attempts >= PBX_SMALL })
+    var weak = enough.filter(function (l) { return oRate(l) < 0.5 })
+    var vm = lines.filter(function (l) { return l.voicemail >= 3 }).sort(function (a, b) { return b.voicemail - a.voicemail })
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero h6"><span>نسبة الاستجابة العامة</span><b>' + (r === null ? '—' : pct(r)) + (pt ? pbxChip(pbxCmp(t, pt), prev) : '') + '</b><small>رد على ' + num(t.ans) + ' من ' + num(t.att) + ' محاولة</small></div>' +
+      '<div class="k"><span>محاولات الاتصال</span><b>' + num(t.att) + '</b><small>على ' + cnt(lines.length, 'مسؤول واحد', 'مسؤولين', 'مسؤولين', 'مسؤولًا') + ' في ' + cnt(Object.keys(branches).length, 'فرع واحد', 'فرعين', 'فروع', 'فرعًا') + '</small></div>' +
+      '<div class="k"><span>لم يُرد عليها</span><b>' + num(t.un) + '</b><small>منها ' + num(t.vm) + ' تحوّلت إلى البريد الصوتي</small></div>' +
+      '<div class="k"><span>استجابة أقل من ' + L('50%') + '</span><b class="' + (weak.length ? 'neg' : 'pos') + '">' + weak.length + of(enough.length) + '</b><small>من لهم ' + PBX_SMALL + ' محاولات أو أكثر</small></div></section>'
+    var prevOf = function (l) { return prev ? (prev.lines || []).filter(function (x) { return x.officer === l.officer })[0] || null : null }
+    var rows = lines.map(function (l) {
+      var x = { att: l.attempts, ans: l.answered }, g = pbxGrade(x), lr = oRate(l), p = prevOf(l)
+      var d = p ? pbxCmp(x, { att: p.attempts, ans: p.answered }) : null
+      var dl = prev ? '<span class="dlt ' + (d === null ? 'no' : d > 0 ? 'up' : d < 0 ? 'dn' : 'no') + '">' + (d === null ? '—' : pbxDelta(d)) + '</span>' : ''
+      return '<div class="rrow orow"><span class="n">' + esc(l.name) + '</span><span class="br2">' + esc(l.branch) + (l.school ? ' · ' + esc(l.school) : '') + '</span>' +
+        '<span class="tw"><span class="tr">' + (lr === null ? '' : '<i class="' + g + '" style="width:' + Math.max(lr * 100, 2).toFixed(1) + '%"></i>') + '</span></span>' +
+        '<b class="g-' + g + '">' + (lr === null ? '—' : pct(lr)) + '</b><small>' + (l.attempts ? num(l.answered) + ' من ' + num(l.attempts) : (l.exts && l.exts.length ? 'لا اتصالات' : 'بلا تحويلة')) + '</small>' + dl + '</div>'
+    }).join('')
+    var item = function (l, right) { return '<li><div class="nm"><b>' + esc(l.name) + '</b><span>' + esc(l.branch + (l.school ? ' · ' + l.school : '')) + '</span></div>' + right + '</li>' }
+    var cap = function (list, n) { return list.length > n ? list.slice(0, n - 1) : list }
+    var w = cap(weak.slice().sort(function (a, b) { return oRate(a) - oRate(b) }), 4), v5 = cap(vm, 4)
+    var weakCard = '<div class="card"><h2>الأضعف في الاستجابة <span>' + PBX_SMALL + ' محاولات فأكثر ونسبة أقل من ' + L('50%') + '</span></h2>' +
+      (weak.length ? '<ul class="list ol">' + w.map(function (l) { return item(l, '<span class="v neg">' + pct(oRate(l)) + '</span><span class="vs">' + num(l.answered) + ' من ' + num(l.attempts) + '</span>') }).join('') +
+        (weak.length > w.length ? '<li class="more">و' + (weak.length - w.length) + ' آخرون في تبويب السنترال</li>' : '') + '</ul>' : '<p class="none">لا يوجد مسؤول تحت ' + L('50%') + '</p>') + '</div>'
+    var vmCard = '<div class="card"><h2>تسرّب المكالمات إلى البريد الصوتي <span>3 مكالمات فأكثر</span></h2>' +
+      (vm.length ? '<ul class="list ol">' + v5.map(function (l) { return item(l, '<span class="v wrn">' + num(l.voicemail) + '</span><span class="vs">من ' + num(l.attempts) + ' محاولة</span>') }).join('') +
+        (vm.length > v5.length ? '<li class="more">و' + (vm.length - v5.length) + ' آخرون في تبويب السنترال</li>' : '') + '</ul>' : '<p class="none">لا تسرّب يُذكر إلى البريد الصوتي</p>') + '</div>'
+    return header() + kpis +
+      '<section class="body b7"><div class="card big"><h2>تقييم كل مسؤول تواصل على تحويلته <span>من الأعلى استجابة، ومن لهم أقل من ' + PBX_SMALL + ' محاولات آخرًا' + (prev ? ' · الفرق عن ' + esc(monthWord(prev.month)) + ' بالنقاط' : '') + '</span></h2>' +
+      '<div class="rrow orow rh"><span class="n">مسؤول التواصل</span><span class="br2">الفرع</span><span class="tw"></span><b>الاستجابة</b><small>رد / المحاولات</small>' + (prev ? '<span class="dlt">عن ' + esc(monthWord(prev.month)) + '</span>' : '') + '</div>' +
+      '<div class="bars">' + rows + '</div>' + pbxKeys() + '</div>' +
+      '<div class="col">' + weakCard + vmCard + '</div></section>'
   }
 
   /* ------------------------------------------------------------ render and control */
@@ -633,7 +689,7 @@
       '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>'
   }
   function render() {
-    var body = [view1, view2, view3, view4, view5, view6][view - 1]()
+    var body = [view1, view2, view3, view4, view5, view6, view7][view - 1]()
     app.innerHTML = body + footer()
   }
   function setView(v) {
@@ -673,9 +729,9 @@
     }
   }
 
-  /* keys: 1-6 pick a view, arrows step through them (left = next, as the views run right to left),
+  /* keys: 1-7 pick a view, arrows step through them (left = next, as the views run right to left),
      OK (or down) opens the views list; in it up/down move, OK picks, back closes */
-  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6 }
+  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 55: 7, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6, 103: 7 }
   var listTimer = null
   function listEl() { return document.getElementById('vlist') }
   function listItems() { var l = listEl(); return l ? [].slice.call(l.querySelectorAll('.vi')) : [] }
@@ -714,7 +770,7 @@
   document.addEventListener('keydown', function (e) {
     if (!started) return
     var k = e.key, code = e.keyCode
-    var n = /^[1-6]$/.test(k) ? +k : KEYS[code]
+    var n = /^[1-7]$/.test(k) ? +k : KEYS[code]
     if (n) { e.preventDefault(); closeList(); setView(n); return }
     if (listOpen()) {
       if (k === 'ArrowDown' || code === 40) { e.preventDefault(); moveFocus(1); return }

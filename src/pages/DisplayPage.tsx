@@ -20,7 +20,8 @@ const VIEWS = [
   { n: 3, title: "المسؤولية المجتمعية", hint: "خطط الفروع والاعتماد" },
   { n: 4, title: "التواصل الاجتماعي", hint: "حسب المدارس والشركة" },
   { n: 5, title: "قنوات الواتساب", hint: "المشتركون لكل قناة" },
-  { n: 6, title: "السنترال", hint: "استجابة كل تحويلات الفروع" },
+  { n: 6, title: "السنترال · الفروع", hint: "استجابة كل تحويلات الفروع" },
+  { n: 7, title: "السنترال · المسؤولون", hint: "كل مسؤول تواصل على تحويلته" },
 ]
 const COUNT = VIEWS.length
 const VIEW_KEY = "andalus-display-view"
@@ -130,7 +131,7 @@ export function DisplayPage() {
           </span>
         }
         title="شاشة العرض"
-        description="ستة عروض مختصرة للشاشة الكبيرة. اختر العرض بنفسك، ولا ينتقل وحده."
+        description="سبعة عروض مختصرة للشاشة الكبيرة. اختر العرض بنفسك، ولا ينتقل وحده."
         actions={
           <>
             <button type="button" onClick={copyLink} title={tvLink} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold text-primary hover:bg-accent">
@@ -144,7 +145,7 @@ export function DisplayPage() {
           </>
         }
       />
-      <div role="radiogroup" aria-label="العرض" className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div role="radiogroup" aria-label="العرض" className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {VIEWS.map((v) => {
           const on = v.n === view
           return (
