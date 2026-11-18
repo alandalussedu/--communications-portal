@@ -36,6 +36,7 @@ const GRADE: Record<Grade, { bar: string; chip: string }> = {
   none: { bar: "", chip: "text-bad" },
 }
 const VOICEMAIL_ALERT = 3
+const PBX_SOURCE = "تقرير مكالمات 3CX"
 
 export function PbxPage({ tab = "officers" }: { tab?: "officers" | "branches" }) {
   const { data, canEdit, deletePbxReport, deletePbxBranchReport } = useStore()
@@ -391,10 +392,12 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
   const partial = result && result.from && result.to && (result.from > `${month}-01` || result.to < lastDayOf(month))
   const noExt = officers.filter((o) => o.active && !o.exts.length)
 
-  // a month that already has an officers report keeps it unless the editor asks to replace it
+  // an officers report from another source (the approved October PDF) stays unless the editor asks to
+  // replace it; one from an earlier 3CX file (e.g. half the month) is replaced by default
   const choose = (m: string) => {
+    const ex = data.pbxReports.find((r) => r.month === m)
     setMonth(m)
-    setDoOfficers(!data.pbxReports.some((r) => r.month === m))
+    setDoOfficers(!ex || ex.source === PBX_SOURCE)
     setDoBranches(true)
   }
 
@@ -417,10 +420,10 @@ function UploadForm({ onDone }: { onDone: (month: string | null) => void }) {
     setSaving(true)
     const uploadedAt = new Date().toISOString()
     const officersReport: PbxReport | null = doOfficers
-      ? { id: month, month, from: result.from, to: result.to, lines: result.lines, waitingExcluded: result.waiting, source: "تقرير مكالمات 3CX", fileName: file.name, uploadedAt }
+      ? { id: month, month, from: result.from, to: result.to, lines: result.lines, waitingExcluded: result.waiting, source: PBX_SOURCE, fileName: file.name, uploadedAt }
       : null
     const branchesReport: PbxBranchReport | null = doBranches
-      ? { id: month, month, from: bres.from, to: bres.to, lines: bres.lines, waitingExcluded: bres.waiting, source: "تقرير مكالمات 3CX", fileName: file.name, uploadedAt }
+      ? { id: month, month, from: bres.from, to: bres.to, lines: bres.lines, waitingExcluded: bres.waiting, source: PBX_SOURCE, fileName: file.name, uploadedAt }
       : null
     const ok = await savePbxUpload(officersReport, branchesReport)
     setSaving(false)
