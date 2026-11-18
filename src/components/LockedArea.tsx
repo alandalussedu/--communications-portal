@@ -9,14 +9,15 @@ import { LoginForm } from "./EditorLogin"
 import { Pill, useSlidingPill } from "@/lib/motion"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][]; ownerOnly?: boolean }[] = [
+const SUB: { page: Route["page"]; label: string; icon: typeof Lock; also?: Route["page"][]; ownerOnly?: boolean; editors?: boolean }[] = [
   { page: "indicators", label: "رضا العملاء وجودة التواصل", icon: LayoutDashboard, also: ["reports", "alerts", "branch"] },
   { page: "remedial", label: "الخطط العلاجية", icon: ClipboardList },
   { page: "complaints", label: "الشكاوى", icon: MessageSquareWarning },
   { page: "pbx", label: "السنترال", icon: PhoneCall, also: ["pbx-branches"] },
   { page: "competitors", label: "دراسة المنافسين", icon: Binoculars },
   { page: "students", label: "أعداد الطلاب", icon: GraduationCap, ownerOnly: true },
-  { page: "display", label: "شاشة العرض", icon: MonitorPlay, ownerOnly: true },
+  // editors too (قرار مدير المنصة); «أعداد الطلاب» inside it stays the owner's
+  { page: "display", label: "شاشة العرض", icon: MonitorPlay, ownerOnly: true, editors: true },
   { page: "builder", label: "التقارير التنفيذية", icon: FileBarChart2 },
   { page: "sources", label: "المصادر", icon: Database },
 ]
@@ -62,14 +63,14 @@ export function LockedArea({ children }: { children: ReactNode }) {
 
 function SubNav() {
   const { route, go } = useRouter()
-  const { vault, member } = useStore()
+  const { vault, member, canEdit } = useStore()
   const [changing, setChanging] = useState(false)
   const pill = useSlidingPill<HTMLUListElement>(route.page)
   return (
     <div className="mb-2 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-1.5">
       <ul ref={pill.ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none] lg:flex-wrap lg:overflow-visible" aria-label="صفحات المؤشرات">
         <Pill box={pill.box} ready={pill.ready} className="rounded-xl bg-secondary" />
-        {SUB.filter((n) => !n.ownerOnly || vault.isOwner).map((n) => {
+        {SUB.filter((n) => !n.ownerOnly || vault.isOwner || (n.editors && canEdit)).map((n) => {
           const active = route.page === n.page || n.also?.includes(route.page)
           const Icon = n.icon
           return (

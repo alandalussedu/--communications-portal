@@ -7,7 +7,8 @@ import { PageHeader, Panel } from "@/components/common"
 import { cn } from "@/lib/utils"
 
 /**
- * «شاشة العرض»: the manager's big-screen views, for the platform owner only.
+ * «شاشة العرض»: the manager's big-screen views, for the platform owner and the editors
+ * (the students view inside stays the owner's: the database gives studentCounts to the owner only).
  * The views themselves live in public/screen/ (one page for this tab and for the
  * TV in the manager's room). Here it runs in a frame with ?embed=1 and borrows
  * this page's own Supabase session through window.__andalusScreen; it never
@@ -37,7 +38,7 @@ function storedView(): number {
 }
 
 export function DisplayPage() {
-  const { vault } = useStore()
+  const { vault, canEdit } = useStore()
   const frame = useRef<HTMLIFrameElement>(null)
   const [view, setView] = useState(storedView)
   const [src] = useState(() => `./screen/?embed=1&view=${storedView()}`)
@@ -99,12 +100,12 @@ export function DisplayPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [view, pick, full])
 
-  if (!vault.isOwner)
+  if (!vault.isOwner && !canEdit)
     return (
       <Panel className="mx-auto mt-8 max-w-lg p-8 text-center">
         <Lock className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
-        <h1 className="mt-3 text-[22px] font-bold">شاشة العرض لمدير المنصة فقط</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">هذه الصفحة متاحة لحسابات مدير المنصة وحدها.</p>
+        <h1 className="mt-3 text-[22px] font-bold">شاشة العرض لفريق الإدارة ومدير المنصة</h1>
+        <p className="mt-2 text-[15px] text-muted-foreground">هذه الصفحة متاحة لحسابات المحررين ومدير المنصة.</p>
       </Panel>
     )
 
@@ -125,7 +126,7 @@ export function DisplayPage() {
           <span className="inline-flex flex-wrap items-center gap-2">
             <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 text-[12px] font-bold text-primary-foreground">
               <Lock className="h-3 w-3" aria-hidden="true" />
-              مدير المنصة فقط
+              فريق الإدارة
             </span>
             الأداء والتطوير
           </span>

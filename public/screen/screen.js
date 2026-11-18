@@ -5,7 +5,7 @@
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
  * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
  *
- * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة) عبر Supabase Auth REST وتحفظ جلستها.
+ * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة أو محرر) عبر Supabase Auth REST وتحفظ جلستها.
  * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
  * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
  * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators وpbxBranchReports وpbxOfficers
@@ -39,6 +39,7 @@
   var lastOk = null
   var pollTimer = null
   var started = false
+  var myRole = null
 
   try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= N) view = saved } catch (e) { /* no storage */ }
   var qv = /[?&]view=(\d)/.exec(location.search)
@@ -127,7 +128,7 @@
   /* ------------------------------------------------------------ forms and messages */
   function showLogin(error) {
     stopTimers()
-    if (EMBED) { showMessage('ادخل إلى المنصة أولًا', 'يظهر هذا العرض لمدير المنصة وهو داخل المنصة.'); return }
+    if (EMBED) { showMessage('ادخل إلى المنصة أولًا', 'يظهر هذا العرض لفريق الإدارة ومدير المنصة وهم داخل المنصة.'); return }
     app.innerHTML =
       '<form class="login" id="login" autocomplete="on">' +
       '<h2>شاشة العرض</h2>' +
@@ -279,6 +280,7 @@
   }
   function view1() {
     var c = data.counts
+    if (!c && myRole === 'editor') return empty('أعداد الطلاب لمدير المنصة فقط', 'هذا العرض يظهر بحساب مدير المنصة وحساب «شاشة عرض»، وبقية العروض متاحة لك.')
     if (!c) return empty('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة.')
     var t = c.total, w = wd(t.withdrawalRate), o = oc(t.occupancy), ti = targetInfo(c)
     var prelim = (c.notes || []).some(function (n) { return n.title.indexOf('النمو') >= 0 && /مبدئي/.test(n.title + n.text) })
@@ -713,7 +715,8 @@
 
   async function allowed() {
     var me = (await api('/rest/v1/rpc/me', { method: 'POST', body: {} })) || []
-    return me[0] && (me[0].role === 'screen' || me[0].role === 'owner') ? me[0] : null
+    // editors too (قرار مدير المنصة); studentCounts stays owner-only in the database, so view 1 tells them so
+    return me[0] && (me[0].role === 'screen' || me[0].role === 'owner' || me[0].role === 'editor') ? me[0] : null
   }
   async function poll() {
     try {
@@ -814,7 +817,8 @@
     showMessage('جارٍ التحميل…', '')
     try {
       var m = await allowed()
-      if (!m) { saveSession(null); showLogin('هذه الشاشة لحساب «شاشة عرض» أو مدير المنصة فقط.'); return }
+      myRole = m ? m.role : null
+      if (!m) { saveSession(null); showLogin('هذه الشاشة لحساب «شاشة عرض» أو المحررين أو مدير المنصة.'); return }
       if (m.must_change_password && !EMBED) { showChangePassword(); return }
       await load()
       started = true
