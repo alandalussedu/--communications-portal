@@ -311,3 +311,40 @@ html, body { line-height: 1.25; }
 .ct { font-size: 19px; }
 .ct td { padding: 5px 10px; }
 .ct th { padding: 0 10px 6px; }
+
+/* 6 · السنترال: كل تحويلات الفروع (لا flex gap ولا خصائص منطقية، وكل سطر بارتفاع صريح) */
+.b6 .big { flex: 1.5; }
+.rrow { display: flex; align-items: center; line-height: 1.25; }
+.rrow .n { width: 180px; flex-shrink: 0; font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rrow .tw { flex: 1; min-width: 0; margin: 0 14px; }
+.rrow .tr { display: block; height: 16px; }
+.rrow b { width: 96px; flex-shrink: 0; font-size: 21px; font-weight: 800; text-align: left; }
+.rrow small { width: 104px; flex-shrink: 0; font-size: 16px; color: var(--mut); text-align: left; white-space: nowrap; }
+.rrow .dlt { width: 76px; }
+.rrow.rh { margin-bottom: 4px; }
+.rrow.rh .n, .rrow.rh b, .rrow.rh small, .rrow.rh .dlt { font-size: 15px; font-weight: 700; color: var(--mut); white-space: nowrap; }
+i.sm { background: #55557a; }
+.keys em.sm { background: #55557a; }
+.g-ok { color: var(--ok); } .g-warn, .wrn { color: var(--warn); } .g-bad { color: var(--bad); } .g-sm, .g-none { color: var(--mut); }
+.k > b .unit { font-size: 24px; font-weight: 700; color: var(--mut); margin-right: 10px; }
+.k > b.duo { font-size: 46px; }
+.k > b.duo .sep { font-size: 34px; }
+.xt { display: inline-block; font-size: 15px; font-weight: 700; color: var(--mut); background: var(--track); border-radius: 8px; padding: 1px 8px; margin-left: 10px; line-height: 1.4; vertical-align: 2px; }
+.flw { -webkit-box-pack: start; justify-content: flex-start; }
+.flw li { padding: 12px 0; }
+.k.h6 > small { display: -webkit-box; }
+.flw .nm b { font-size: 21px; line-height: 1.3; }
+.flw .nm > span { display: block; font-size: 16px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flw .tag { font-size: 14px; vertical-align: 2px; }
+.flw .v { font-size: 30px; line-height: 1; margin-right: 14px; }
+.flw .vs { width: 66px; flex-shrink: 0; font-size: 14px; line-height: 1.25; color: var(--mut); margin-right: 8px; }
+.list .v.neg { color: var(--bad); }
+.hqc h2 { margin-bottom: 10px; }
+.hqr { display: flex; align-items: baseline; font-size: 19px; color: var(--mut); line-height: 1.25; }
+.hqr b { font-size: 40px; font-weight: 800; line-height: 1; margin-left: 16px; }
+.hqt { font-size: 17px; color: var(--mut); line-height: 1.3; margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col > .card.hqc { flex: 0 0 auto; }
+
+/* six views: the header buttons still fit beside the longest title */
+.views .dot { font-size: 15px; padding: 7px 8px 7px 11px; margin-left: 5px; }
+.views .dot b { width: 25px; height: 25px; font-size: 14px; margin-left: 6px; }

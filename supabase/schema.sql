@@ -6,7 +6,7 @@
 --   editor : فريق إدارة التواصل، يرى ويعدّل
 --   owner  : مدير المنصة، كالمحرر ويدير المستخدمين (عبر الدالة admin-members)
 --   screen : شاشة عرض (مثل شاشة غرفة المدير)، تقرأ مجموعات screen_collection فقط ولا ترى أي قسم آخر
--- مجموعات editor_collection لفريق الإدارة ومدير المنصة فقط: لا يقرؤها مسؤول التواصل ولا الشاشة.
+-- مجموعات editor_collection لفريق الإدارة ومدير المنصة فقط: لا يقرؤها مسؤول التواصل، والشاشة لا تقرأ منها إلا ما في screen_collection.
 -- الزائر بلا دخول يرى المجموعات العامة فقط.
 -- الحماية في الخادم: قواعد RLS أدناه هي ما يقرر من يقرأ ماذا، لا الواجهة.
 
@@ -44,7 +44,7 @@ create or replace function public.owner_collection(c text) returns boolean
   language sql immutable
   as $$ select c in ('studentCounts') $$;
 
--- مجموعات لفريق الإدارة ومدير المنصة فقط (editor, owner): لا يقرؤها مسؤول التواصل (viewer) ولا الشاشة.
+-- مجموعات لفريق الإدارة ومدير المنصة فقط (editor, owner): لا يقرؤها مسؤول التواصل (viewer)، والشاشة لا تقرأ منها إلا ما في screen_collection.
 -- pbxBranchReports وpbxDirectory: تبويب «الفروع» في السنترال، فيه أسماء موظفي الفروع وأداء تحويلاتهم (قرار مدير المنصة)
 create or replace function public.editor_collection(c text) returns boolean
   language sql immutable
@@ -52,9 +52,10 @@ create or replace function public.editor_collection(c text) returns boolean
 
 -- ما تقرؤه حسابات «شاشة» (للقراءة فقط) فوق المجموعات العامة، ولا شيء غيره.
 -- csrPlans لعرض «المسؤولية المجتمعية» وindicators لعرض «رضا العملاء وجودة التواصل» في شاشة العرض (بإذن مدير المنصة)
+-- pbxBranchReports وpbxDirectory وpbxOfficers لعرض «السنترال · الفروع» في شاشة العرض (طلب مدير المنصة)
 create or replace function public.screen_collection(c text) returns boolean
   language sql immutable
-  as $$ select c in ('studentCounts', 'csrPlans', 'indicators') $$;
+  as $$ select c in ('studentCounts', 'csrPlans', 'indicators', 'pbxBranchReports', 'pbxDirectory', 'pbxOfficers') $$;
 
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public

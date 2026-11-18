@@ -1,14 +1,15 @@
 /*
  * شاشة العرض (للتلفزيون في غرفة المدير ولتبويب «شاشة العرض» في المنصة).
- * خمسة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
- * التواصل الاجتماعي حسب المدارس، قنوات الواتساب.
+ * ستة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
+ * التواصل الاجتماعي حسب المدارس، قنوات الواتساب، السنترال (استجابة كل تحويلات الفروع).
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
  * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
  *
  * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة) عبر Supabase Auth REST وتحفظ جلستها.
  * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
  * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
- * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators والمجموعات العامة (screen_collection).
+ * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators وpbxBranchReports وpbxDirectory
+ * وpbxOfficers والمجموعات العامة (screen_collection).
  * الرابط والمفتاح العام (publishable) عامّان بطبيعتهما كما في src/config.ts.
  */
 (function () {
@@ -20,8 +21,8 @@
   var VIEW_STORE = 'andalus-screen-view'
   var LEVELS = { wdGood: 0.08, wdFollow: 0.12, ocHigh: 0.85, ocGood: 0.7 } // اعتمدها مدير المنصة
   var EMBED = /[?&]embed=1/.test(location.search)
-  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب']]
-  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب']
+  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال']]
+  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع']
   var N = VIEWS.length
   var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
   var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
@@ -30,7 +31,8 @@
   var app = document.getElementById('app')
   var stage = document.getElementById('stage')
   var session = null
-  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [] } }
+  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [], pbxReports: [], pbxOfficers: [] } }
+  var pbxDir = null, pbxDirAt = 0 // «دليل التحويلات» is large and rarely changes: read at most every 30 minutes
   var data = EMPTY_DATA()
   var view = 1
   var online = true
@@ -38,9 +40,9 @@
   var pollTimer = null
   var started = false
 
-  try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= 5) view = saved } catch (e) { /* no storage */ }
+  try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= N) view = saved } catch (e) { /* no storage */ }
   var qv = /[?&]view=(\d)/.exec(location.search)
-  if (qv && +qv[1] >= 1 && +qv[1] <= 5) view = +qv[1]
+  if (qv && +qv[1] >= 1 && +qv[1] <= N) view = +qv[1]
 
   /* ------------------------------------------------------------ fit 1920×1080 to the screen */
   function fit() {
@@ -188,12 +190,18 @@
       api('/rest/v1/docs?collection=eq.socialAccounts&select=id,data'),
       api('/rest/v1/docs?collection=eq.socialReadings&select=id,data'),
       api('/rest/v1/docs?collection=eq.indicators&select=id,data'),
+      api('/rest/v1/docs?collection=eq.pbxBranchReports&select=id,data&order=id.desc&limit=2'),
+      api('/rest/v1/docs?collection=eq.pbxOfficers&select=id,data'),
+      !pbxDir || Date.now() - pbxDirAt > 30 * 60000 ? api('/rest/v1/docs?collection=eq.pbxDirectory&id=eq.current&select=id,data') : null,
     ])
     var rows = function (r) { return (r || []).map(function (x) { var d = x.data || {}; d.id = x.id; return d }) }
     var counts = rows(res[0]).filter(function (d) { return d.date && d.branches && d.total })
     counts.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0 })
     var targets = rows(res[0]).filter(function (d) { return d.kind === 'target' && d.year && d.branches })
-    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]) }
+    var reports = rows(res[5]).filter(function (d) { return d.month && d.lines })
+    reports.sort(function (a, b) { return a.month < b.month ? 1 : a.month > b.month ? -1 : 0 })
+    if (res[7]) { pbxDir = rows(res[7])[0] || null; pbxDirAt = Date.now() }
+    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]), pbxReports: reports.slice(0, 2), pbxOfficers: rows(res[6]) }
     online = true
     lastOk = new Date()
     var changed = JSON.stringify(next) !== JSON.stringify(data)
@@ -212,6 +220,11 @@
     if (view === 3) {
       var read = data.plans.map(function (p) { return p.readAt || '' }).sort().pop()
       return 'من «خطط الفروع» لكل فرع' + (read ? ' · آخر قراءة <b>' + esc(fmtDate(read)) + '</b>' : '')
+    }
+    if (view === 6) {
+      var rp = data.pbxReports[0]
+      if (!rp) return 'تقرير مكالمات 3CX'
+      return 'تقرير مكالمات 3CX · <b>' + esc(fmtMonth(rp.month)) + '</b>' + (pbxPartial(rp) ? ' · من ' + (+rp.from.slice(8, 10)) + ' إلى ' + esc(fmtDate(rp.to)) + ' فقط' : '')
     }
     var m = latestMonth()
     if (view === 4) return 'حسابات المدارس والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
@@ -503,15 +516,126 @@
       '<div class="card"><h2>&nbsp;</h2><div class="bars">' + ids.slice(half).map(row).join('') + '</div></div></section>'
   }
 
+  /* ------------------------------------------------------------ 6 · السنترال: كل تحويلات الفروع */
+  // الفرع والقسم من رقم التحويلة، بالجدول نفسه في src/lib/pbxBranches.ts (RANGES): عدّلهما معًا
+  var HQ = 'الإدارة العامة'
+  var PBX_RANGES = [
+    [1000, 1199, HQ, 'إدارات الشركة'],
+    [1200, 1299, 'الزهراء', 'بنات · رياض الأطفال'], [1300, 1399, 'الزهراء', 'بنين · ابتدائي'], [1400, 1499, 'الزهراء', 'بنات · ابتدائي'],
+    [1500, 1599, 'الزهراء', 'بنين · متوسط'], [1600, 1699, 'الزهراء', 'بنات · متوسط'], [1700, 1799, 'الزهراء', 'بنين · ثانوي'], [1800, 1899, 'الزهراء', 'بنات · ثانوي'],
+    [1900, 1999, 'الروضة', 'بنين'], [2000, 2099, 'الروضة', 'بنات'], [2100, 2199, 'الحمدانية', 'بنين · متوسط وثانوي'], [2200, 2299, 'الزهراء', 'الطفولة المبكرة'],
+    [2300, 2399, 'مكة', 'بنين · ابتدائي'], [2400, 2499, 'مكة', 'بنات · رياض وابتدائي'], [2500, 2599, 'مكة', 'بنين · متوسط وثانوي'], [2600, 2699, 'مكة', 'بنات · متوسط وثانوي'],
+    [2700, 2799, 'الطائف', 'بنين · ابتدائي'], [2800, 2899, 'الطائف', 'بنين · متوسط'], [2900, 2999, 'الطائف', 'بنين · ثانوي'], [3000, 3099, 'الطائف', 'بنات'],
+    [3100, 3199, 'أبها', 'بنين · ابتدائي'], [3200, 3299, 'أبها', 'بنين · متوسط'], [3300, 3399, 'أبها', 'بنين · ثانوي'], [3400, 3499, 'أبها', 'بنات'],
+    [3500, 3599, 'خميس مشيط', 'بنين · ابتدائي'], [3600, 3699, 'خميس مشيط', 'بنين · متوسط'], [3700, 3799, 'خميس مشيط', 'بنين · ثانوي'], [3800, 3899, 'خميس مشيط', 'بنات'],
+    [3900, 3999, 'الجوف', 'بنين · ابتدائي'], [4000, 4099, 'الجوف', 'بنين · متوسط'], [4100, 4199, 'الجوف', 'بنين · ثانوي'], [4200, 4299, 'الجوف', 'بنات · ابتدائي'], [4300, 4399, 'الجوف', 'بنات · متوسط وثانوي'],
+    [4400, 4499, 'الحمدانية', 'بنين · ابتدائي أهلي'], [4500, 4599, 'الحمدانية', 'المسار المصري'], [4600, 4699, 'الحمدانية', 'بنات · ابتدائي'], [4700, 4799, 'الحمدانية', 'بنات · متوسط وثانوي'],
+    [4800, 4899, 'نجران', 'بنين'], [4900, 4999, 'نجران', 'بنات'], [5000, 5099, 'الشاطئ موهبة', 'بنين'], [5100, 5199, 'الحمدانية', 'رياض الأطفال'],
+    [5200, 5299, 'الشاطئ العالمية', 'بنين'], [5300, 5399, 'الشاطئ العالمية', 'بنات · ابتدائي'], [5400, 5499, 'الطائف', 'بنات · رياض ودبلوما'], [5500, 5599, 'الحمدانية', 'دبلوما'],
+    [5600, 5699, 'الشاطئ موهبة', 'بنات'], [5700, 5799, 'الفيحاء', 'بنين'], [5800, 5899, 'الفيحاء', 'بنات · أهلي'], [5900, 5999, 'الشاطئ العالمية', 'بنات · متوسط وثانوي'],
+    [6000, 6099, 'الفيحاء', 'بنات · عالمي'], [6100, 6199, 'الفيحاء', 'بنات · المسار الموازي'], [6200, 6299, 'المنار', 'بنين'], [6300, 6399, 'أبحر', 'بنين · أهلي'],
+    [6400, 6499, 'أبحر', 'بنات · عالمي'], [6500, 6599, 'المنار', 'بنات · أهلي'], [6600, 6699, 'أبحر', 'بنات · أهلي'], [6700, 6799, 'الروضة', 'رياض الأطفال'],
+    [6800, 6899, 'المنار', 'بنات · عالمي ورياض'], [6900, 6999, 'الرياض', 'بنين · أهلي'], [7000, 7099, 'الرياض', 'بنين · عالمي'], [7100, 7199, 'الرياض', 'بنات · أهلي'],
+    [7200, 7299, 'الرياض', 'بنات · عالمي والأوائل'], [7300, 7399, 'أبها', 'عالمي · بنين'], [7400, 7499, 'أبها', 'عالمي · بنات'], [7500, 7599, 'أبحر', 'بنين · عالمي']
+  ]
+  var PBX_TOP = { '1111': 1, '2222': 1, '3333': 1, '4444': 1, '5555': 1, '6666': 1, '9999': 1 }
+  var PBX_ORDER = ['الزهراء', 'الروضة', 'الحمدانية', 'مكة', 'الطائف', 'أبها', 'خميس مشيط', 'الجوف', 'نجران', 'الشاطئ العالمية', 'الشاطئ موهبة', 'الفيحاء', 'المنار', 'أبحر', 'الرياض']
+  var PBX_SMALL = 5, PBX_FOLLOW = 5
+  function pbxPlace(ext, entry) {
+    if (PBX_TOP[ext]) return [HQ, 'الإدارة العليا']
+    var n = +ext
+    for (var i = 0; i < PBX_RANGES.length; i++) { var r = PBX_RANGES[i]; if (n >= r[0] && n <= r[1]) return [r[2], r[3]] }
+    if (entry && entry.hq) return [HQ, entry.section || 'إدارات أخرى']
+    return null
+  }
+  function pbxLastDay(ym) { var p = ym.split('-'); return ym + '-' + ('0' + new Date(+p[0], +p[1], 0).getDate()).slice(-2) }
+  function pbxPartial(r) { return !!(r.from && r.to && (r.from > r.month + '-01' || r.to < pbxLastDay(r.month))) }
+  function pbxZero() { return { att: 0, ans: 0, un: 0, vm: 0, exts: 0 } }
+  function pbxAdd(t, l) { t.att += l.attempts || 0; t.ans += l.answered || 0; t.un += l.unanswered || 0; t.vm += l.voicemail || 0; t.exts++ }
+  function pbxRate(t) { return t.att ? t.ans / t.att : null }
+  function pbxGrade(t) { var r = pbxRate(t); if (r === null) return 'none'; if (t.att < PBX_SMALL) return 'sm'; return r >= 0.7 ? 'ok' : r >= 0.5 ? 'warn' : 'bad' }
+  function cnt(n, one, two, few, many) { return n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? num(n) + ' ' + few : num(n) + ' ' + many }
+  /** the month grouped like the portal's «الفروع» tab (src/lib/pbxBranches.ts branchView) */
+  function pbxView(rep) {
+    var dir = {}, off = {}
+    ;((pbxDir && pbxDir.entries) || []).forEach(function (e) { dir[e.ext] = e })
+    data.pbxOfficers.forEach(function (o) { if (o.active !== false) (o.exts || []).forEach(function (x) { off[x] = o }) })
+    var groups = {}, hq = null, tot = pbxZero(), offT = pbxZero(), othT = pbxZero(), ring = [], follow = []
+    ;(rep.lines || []).forEach(function (l) {
+      var e = dir[l.ext] || null, p = pbxPlace(l.ext, e)
+      if (!p) return
+      var row = { l: l, e: e, p: p, o: off[l.ext] || null }
+      if (p[0] === HQ) { if (!hq) hq = { t: pbxZero(), rows: [] }; pbxAdd(hq.t, l); hq.rows.push(row); return }
+      if (!groups[p[0]]) groups[p[0]] = pbxZero()
+      pbxAdd(groups[p[0]], l); pbxAdd(tot, l); pbxAdd(row.o ? offT : othT, l)
+      ;(l.ring || []).forEach(function (x) { ring.push(x) })
+      if ((l.unanswered || 0) >= PBX_FOLLOW) follow.push(row)
+    })
+    var tier = function (b) { return b.att === 0 ? 2 : b.att < PBX_SMALL ? 1 : 0 }
+    var branches = PBX_ORDER.map(function (n) { var g = groups[n] || pbxZero(); g.name = n; return g })
+    branches.sort(function (a, b) { return tier(a) - tier(b) || (pbxRate(b) || -1) - (pbxRate(a) || -1) || b.att - a.att || PBX_ORDER.indexOf(a.name) - PBX_ORDER.indexOf(b.name) })
+    follow.sort(function (a, b) { return b.l.unanswered - a.l.unanswered || b.l.attempts - a.l.attempts || +a.l.ext - +b.l.ext })
+    ring.sort(function (a, b) { return a - b })
+    var mid = Math.floor(ring.length / 2)
+    return { tot: tot, off: offT, oth: othT, branches: branches, hq: hq, follow: follow, live: branches.filter(function (b) { return b.att > 0 }).length,
+      ring: ring.length ? (ring.length % 2 ? ring[mid] : (ring[mid - 1] + ring[mid]) / 2) : null }
+  }
+  function view6() {
+    var reps = data.pbxReports
+    if (!reps.length) return empty('لم يُرفع تقرير السنترال بعد', 'يُرفع تقرير مكالمات 3CX من تبويب السنترال في المنصة.')
+    var cur = reps[0], prev = reps[1] || null
+    var v = pbxView(cur), pv = prev ? pbxView(prev) : null, t = v.tot, r = pbxRate(t)
+    var cmp = function (a, b) { return a && b && a.att >= PBX_SMALL && b.att >= PBX_SMALL ? pbxRate(a) - pbxRate(b) : null }
+    var dTot = pv ? cmp(t, pv.tot) : null
+    var gcls = function (x) { var g = pbxGrade(x); return g === 'ok' ? 'pos' : g === 'bad' ? 'neg' : g === 'warn' ? 'wrn' : '' }
+    var share = t.att ? Math.round(v.off.att / t.att * 100) : 0
+    var sec = v.ring === null ? null : Math.round(v.ring)
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero h6"><span>نسبة الرد في الفروع</span><b>' + (r === null ? '—' : pct(r)) +
+        (dTot !== null ? '<i class="chip ' + (dTot >= 0 ? 'ok' : 'bad') + '">' + L((dTot > 0 ? '+' : dTot < 0 ? '−' : '') + Math.abs(dTot * 100).toFixed(1)) + ' عن ' + esc(monthWord(prev.month)) + '</i>' : '') +
+        '</b><small>رد على ' + num(t.ans) + ' من ' + num(t.att) + ' مكالمة محوّلة</small></div>' +
+      '<div class="k"><span>المكالمات المحوّلة</span><b>' + num(t.att) + '</b><small>إلى ' + cnt(t.exts, 'تحويلة واحدة', 'تحويلتين', 'تحويلات', 'تحويلة') + ' في ' + cnt(v.live, 'فرع واحد', 'فرعين', 'فروع', 'فرعًا') + '</small></div>' +
+      '<div class="k"><span>لم يُرد عليها</span><b>' + num(t.un) + '</b><small>منها ' + num(t.vm) + ' انتهت في البريد الصوتي</small></div>' +
+      '<div class="k"><span>سرعة الرد</span><b>' + (sec === null ? '—' : num(sec) + '<span class="unit">' + (sec >= 3 && sec <= 10 ? 'ثوانٍ' : 'ثانية') + '</span>') + '</b><small>' + (sec === null ? 'لا يحمل الملف مدة الرنين' : 'نصف المكالمات المُجابة رُد عليها خلالها أو أقل') + '</small></div>' +
+      '<div class="k"><span>الرد: المسؤولون · البقية</span><b class="duo"><span class="' + gcls(v.off) + '">' + (v.off.att ? L((pbxRate(v.off) * 100).toFixed(0) + '%') : '—') + '</span><span class="sep">/</span><span class="' + gcls(v.oth) + '">' + (v.oth.att ? L((pbxRate(v.oth) * 100).toFixed(0) + '%') : '—') + '</span></b>' +
+        '<small>استقبل مسؤولو التواصل ' + L(share + '%') + ' من المكالمات</small></div></section>'
+    var rows = v.branches.map(function (b) {
+      var g = pbxGrade(b), br = pbxRate(b)
+      var p = pv ? pv.branches.filter(function (x) { return x.name === b.name })[0] : null, d = cmp(b, p)
+      var dl = pv ? '<span class="dlt ' + (d === null ? 'no' : d > 0 ? 'up' : d < 0 ? 'dn' : 'no') + '">' + (d === null ? '—' : L((d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d * 100).toFixed(0))) + '</span>' : ''
+      return '<div class="rrow"><span class="n">' + esc(b.name) + '</span><span class="tw"><span class="tr">' + (br === null ? '' : '<i class="' + g + '" style="width:' + Math.max(br * 100, 2).toFixed(1) + '%"></i>') + '</span></span>' +
+        '<b class="g-' + g + '">' + (br === null ? '—' : pct(br)) + '</b><small>' + (b.att ? num(b.ans) + ' من ' + num(b.att) : 'لا تحويلات') + '</small>' + dl + '</div>'
+    }).join('')
+    var who = function (x) { return x.o ? x.o.name : x.e && x.e.name ? x.e.name : x.e ? 'بلا اسم في الدليل' : 'غير موجود في الدليل' }
+    var role = function (x) { return x.e && x.e.title ? x.e.title : x.o ? 'مسؤول التواصل' : '' }
+    var fl = v.follow, shown = fl.length > 5 ? fl.slice(0, 4) : fl
+    var flist = fl.length ? '<ul class="list flw">' + shown.map(function (x) {
+      return '<li><div class="nm"><b><span class="xt">' + L(esc(x.l.ext)) + '</span>' + esc(who(x)) + (x.o ? ' <i class="tag">مسؤول التواصل</i>' : '') + '</b><span>' + esc(x.p[0] + ' · ' + x.p[1] + (role(x) && !x.o ? ' · ' + role(x) : '')) + '</span></div>' +
+        '<span class="v neg">' + num(x.l.unanswered) + '</span><span class="vs">بلا رد<br>من ' + num(x.l.attempts) + '</span></li>'
+    }).join('') + (fl.length > shown.length ? '<li class="more">و' + (fl.length - shown.length) + ' تحويلات أخرى في تبويب السنترال</li>' : '') + '</ul>' : '<p class="none">لا توجد تحويلة لم يُرد فيها على ' + PBX_FOLLOW + ' مكالمات أو أكثر</p>'
+    var hqCard = ''
+    if (v.hq) {
+      var top = v.hq.rows.slice().sort(function (a, b) { return b.l.attempts - a.l.attempts })[0], hr = pbxRate(v.hq.t)
+      hqCard = '<div class="card hqc"><h2>الإدارة العامة <span>خارج ترتيب الفروع</span></h2><p class="hqr"><b class="g-' + pbxGrade(v.hq.t) + '">' + (hr === null ? '—' : pct(hr)) + '</b>رد على ' + num(v.hq.t.ans) + ' من ' + num(v.hq.t.att) + ' مكالمة</p>' +
+        (top ? '<p class="hqt"><span class="xt">' + L(esc(top.l.ext)) + '</span>' + esc(top.e && top.e.title ? top.e.title : who(top)) + ' · رد على ' + num(top.l.answered) + ' من ' + num(top.l.attempts) + '</p>' : '') + '</div>'
+    }
+    return header() + kpis +
+      '<section class="body b6"><div class="card big"><h2>ترتيب الفروع حسب نسبة الرد <span>كل تحويلات الفرع' + (pv ? ' · الفرق عن ' + esc(monthWord(prev.month)) + ' بالنقاط' : '') + '</span></h2>' +
+      '<div class="rrow rh"><span class="n">الفرع</span><span class="tw"></span><b>نسبة الرد</b><small>رد / المكالمات</small>' + (pv ? '<span class="dlt">عن ' + esc(monthWord(prev.month)) + '</span>' : '') + '</div>' +
+      '<div class="bars">' + rows + '</div>' +
+      keys([['ok', 'جيدة: ' + L('70%') + ' فأكثر'], ['warn', 'متابعة: ' + L('50–70%')], ['bad', 'ضعيفة: أقل من ' + L('50%')], ['sm', 'أقل من ' + PBX_SMALL + ' مكالمات']]) + '</div>' +
+      '<div class="col"><div class="card"><h2>تحويلات تحتاج متابعة <span>' + PBX_FOLLOW + ' مكالمات بلا رد أو أكثر</span></h2>' + flist + '</div>' + hqCard + '</div></section>'
+  }
+
   /* ------------------------------------------------------------ render and control */
   function footer() {
     var st = online ? 'آخر تحديث ' + timeFmt.format(lastOk || new Date()) : 'غير متصل · آخر تحديث ' + (lastOk ? timeFmt.format(lastOk) : '—')
-    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
+    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
       '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>' +
       (EMBED ? '' : '<div class="menu" id="menu"><button type="button" id="m-full">ملء الشاشة</button><button type="button" id="m-out">تسجيل الخروج</button></div>')
   }
   function render() {
-    var body = [view1, view2, view3, view4, view5][view - 1]()
+    var body = [view1, view2, view3, view4, view5, view6][view - 1]()
     app.innerHTML = body + footer()
     if (!EMBED) bindMenu()
   }
@@ -552,14 +676,14 @@
     }
   }
 
-  /* keys: 1-4 pick a view, arrows step through them (left = next, as the views run right to left), OK opens the menu */
-  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5 }
+  /* keys: 1-6 pick a view, arrows step through them (left = next, as the views run right to left), OK opens the menu */
+  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6 }
   document.addEventListener('keydown', function (e) {
     if (!started) return
     var tag = (e.target && e.target.tagName) || ''
     var menuOpen = !!document.querySelector('.menu.on')
     var k = e.key, code = e.keyCode
-    var n = /^[1-5]$/.test(k) ? +k : KEYS[code]
+    var n = /^[1-6]$/.test(k) ? +k : KEYS[code]
     if (n) { e.preventDefault(); hideMenu(); setView(n); return }
     if (!menuOpen && (k === 'ArrowLeft' || code === 37)) { e.preventDefault(); setView(view + 1); return }
     if (!menuOpen && (k === 'ArrowRight' || code === 39)) { e.preventDefault(); setView(view - 1); return }
