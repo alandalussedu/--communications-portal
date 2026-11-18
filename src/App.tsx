@@ -55,6 +55,8 @@ function Pages() {
       return <LibraryPage key={nonce} section={route.section} />
     case "social":
       return <SocialPage key={nonce} />
+    case "whatsapp":
+      return <SocialPage key="whatsapp" mode="whatsapp" />
     case "calendar":
       return <CalendarPage key={nonce} />
     case "overview":

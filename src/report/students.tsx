@@ -5,9 +5,9 @@
  */
 import type { ReactNode } from "react"
 import { LOGO_NAVY } from "@/assets/logo"
-import type { StudentCounts, StudentRow } from "@/data/types"
+import type { StudentCounts, StudentRow, StudentTarget } from "@/data/types"
 import { formatDate, formatNumber } from "@/lib/format"
-import { growthPreliminary, notesFor, occupancyStatus, pct, shortName, signedPct, withdrawalStatus, type Tone } from "@/lib/students"
+import { growthPreliminary, notesFor, occupancyStatus, pct, shortName, signedPct, targetSummary, withdrawalStatus, yearLabel, type Tone } from "@/lib/students"
 import { PAGE_H, PAGE_W } from "./ReportPages"
 
 const FILL: Record<Tone, string> = { ok: "#1f7a4d", sky: "#0a93d6", warn: "#9e5a00", bad: "#c0392b" }
@@ -174,7 +174,8 @@ function Split({ title, names, rows, total }: { title: string; names: string[]; 
   )
 }
 
-export function studentsPages(c: StudentCounts): ReactNode[] {
+export function studentsPages(c: StudentCounts, target: StudentTarget | null = null, targetYear = ""): ReactNode[] {
+  const ts = targetSummary(target, c)
   const generatedAt = new Date()
   const t = c.total
   const ws = withdrawalStatus(t.withdrawalRate), os = occupancyStatus(t.occupancy)
@@ -191,6 +192,12 @@ export function studentsPages(c: StudentCounts): ReactNode[] {
           <Kpi label="نسبة الإشغال" value={pct(t.occupancy)} chip={os} sub="مرتفع من 85% · جيد من 70%" />
           <Kpi label="الطاقة التشغيلية" value={formatNumber(t.capacity)} sub={`${formatNumber(Math.max(t.capacity - t.current, 0))} مقعدًا متاحًا`} />
         </div>
+        {ts.total > 0 && (
+          <p className="-mt-1 mb-3 rounded-lg px-4 py-2 text-[12px]" style={{ background: "#fbf6e8" }}>
+            <b>مستهدف العام القادم <Ltr>{yearLabel(targetYear)}</Ltr>:</b> <span className="num">{formatNumber(ts.total)}</span> طالبًا
+            {ts.complete ? <> · الحاليون <span className="num">{pct(ts.current / ts.total)}</span> منه</> : <> · مُدخل لـ {formatNumber(ts.entered)} من {formatNumber(ts.of)} فرعًا</>}
+          </p>
+        )}
         <H sub="الحاليون مقابل الطاقة التشغيلية، مرتبة من الأعلى إشغالًا.">نسبة الإشغال لكل فرع</H>
         <OccupancyBars c={c} />
         {alerts.length > 0 && (

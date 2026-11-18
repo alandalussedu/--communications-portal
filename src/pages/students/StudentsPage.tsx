@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from "react"
 import { AlertTriangle, FileDown, FileSpreadsheet, Loader2, Lock, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/data/store"
-import type { StudentCounts } from "@/data/types"
+import type { StudentCounts, StudentTarget } from "@/data/types"
 import { formatDate, formatNumber } from "@/lib/format"
-import { StudentFileError, pct, readStudentFile, shortName, type StudentParse } from "@/lib/students"
+import { StudentFileError, isPull, isTarget, nextYear, pct, readStudentFile, shortName, yearLabel, type StudentParse } from "@/lib/students"
 import { SAVE_ERROR, useDownloads } from "@/lib/downloads"
 import { exportPdf } from "@/report/pdf"
 import { studentsPages, studentsTitle } from "@/report/students"
@@ -20,12 +20,15 @@ import { BranchChip, Dashboard } from "./Dashboard"
  */
 export function StudentsPage() {
   const { data, vault, deleteStudentCounts } = useStore()
-  const list = useMemo(() => [...data.studentCounts].sort((a, b) => b.date.localeCompare(a.date)), [data.studentCounts])
+  const list = useMemo(() => data.studentCounts.filter(isPull).sort((a, b) => b.date.localeCompare(a.date)), [data.studentCounts])
   const [pick, setPick] = useState<string | null>(null)
   const counts = list.find((c) => c.id === pick) ?? list[0] ?? null
   const prev = counts ? list.find((c) => c.date < counts.date) ?? null : null
   const [branch, setBranch] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [editingTarget, setEditingTarget] = useState(false)
+  const targetYear = counts ? nextYear(counts) : ""
+  const target = (data.studentCounts.find((d) => isTarget(d) && d.year === targetYear) as StudentTarget | undefined) ?? null
   const downloads = useDownloads()
   const [exporting, setExporting] = useState(false)
   const pagesRef = useRef<HTMLDivElement>(null)
@@ -115,7 +118,7 @@ export function StudentsPage() {
                 </span>
               )}
             </div>
-            <Dashboard counts={counts} prev={prev} branch={branch && counts.branches.some((b) => b.name === branch) ? branch : null} onBranch={setBranch} />
+            <Dashboard counts={counts} prev={prev} branch={branch && counts.branches.some((b) => b.name === branch) ? branch : null} onBranch={setBranch} target={target} targetYear={targetYear} onEditTarget={() => setEditingTarget(true)} />
             <p className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
               {counts.fileName ?? "ملف مؤشرات أعداد الطلاب"} · حُفظ {formatDate(counts.uploadedAt)}
               <button
@@ -133,7 +136,7 @@ export function StudentsPage() {
 
       {exporting && counts && (
         <div aria-hidden="true" style={{ position: "fixed", top: 0, left: -20000, pointerEvents: "none" }}>
-          <div ref={pagesRef}>{studentsPages(counts)}</div>
+          <div ref={pagesRef}>{studentsPages(counts, target, targetYear)}</div>
         </div>
       )}
       <Sheet open={uploading} onOpenChange={setUploading}>
@@ -147,6 +150,19 @@ export function StudentsPage() {
           <UploadForm existing={list} onDone={(id) => (setUploading(false), id && (setPick(id), setBranch(null)))} />
         </SheetContent>
       </Sheet>
+      {counts && (
+        <Sheet open={editingTarget} onOpenChange={setEditingTarget}>
+          <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-xl" dir="rtl">
+            <SheetHeader className="pe-8 text-start">
+              <SheetTitle className="text-start text-[22px] font-bold">مستهدف العام القادم · <bdi dir="ltr">{yearLabel(targetYear)}</bdi></SheetTitle>
+              <SheetDescription className="text-start text-[15px]">
+                يُدخل يدويًا لكل فرع، وليس من ملف Excel. الإجمالي يُجمع تلقائيًا، والبطاقة تعرض الإجمالي فقط. يبقى المستهدف كما هو عند رفع سحب جديد.
+              </SheetDescription>
+            </SheetHeader>
+            <TargetForm key={target?.updatedAt ?? "new"} counts={counts} year={targetYear} target={target} onDone={() => setEditingTarget(false)} />
+          </SheetContent>
+        </Sheet>
+      )}
     </>
   )
 }
@@ -238,6 +254,79 @@ function UploadForm({ existing, onDone }: { existing: StudentCounts[]; onDone: (
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+function TargetForm({ counts, year, target, onDone }: { counts: StudentCounts; year: string; target: StudentTarget | null; onDone: () => void }) {
+  const { saveStudentTarget } = useStore()
+  const rows = useMemo(() => [...counts.branches].sort((a, b) => b.current - a.current), [counts])
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(rows.map((b) => [shortName(b.name), target && target.branches[shortName(b.name)] > 0 ? String(target.branches[shortName(b.name)]) : ""])),
+  )
+  const [saving, setSaving] = useState(false)
+  const parse = (v: string) => {
+    const d = v.replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x0660)).replace(/[,\s]/g, "")
+    return /^\d+$/.test(d) ? Number(d) : null
+  }
+  const bad = Object.entries(values).filter(([, v]) => v.trim() !== "" && parse(v) === null).map(([k]) => k)
+  const entered = Object.values(values).map(parse).filter((n): n is number => n !== null && n > 0)
+  const total = entered.reduce((a, n) => a + n, 0)
+  const save = async () => {
+    if (bad.length) return
+    setSaving(true)
+    const branches: Record<string, number> = {}
+    for (const [k, v] of Object.entries(values)) {
+      const n = parse(v)
+      if (n !== null && n > 0) branches[k] = n
+    }
+    const ok = await saveStudentTarget({ id: `target-${year}`, kind: "target", year, branches, updatedAt: new Date().toISOString() })
+    setSaving(false)
+    if (ok) onDone()
+  }
+  return (
+    <div className="mt-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_6rem_9rem] gap-3 border-b pb-2 text-[13px] font-bold text-muted-foreground">
+        <span>الفرع</span>
+        <span className="text-end">الحاليون الآن</span>
+        <span>المستهدف</span>
+      </div>
+      <ul className="divide-y">
+        {rows.map((b, i) => {
+          const k = shortName(b.name)
+          const invalid = bad.includes(k)
+          return (
+            <li key={k} className="grid grid-cols-[minmax(0,1fr)_6rem_9rem] items-center gap-3 py-2">
+              <label htmlFor={`tg-${i}`} className="truncate text-[15px] font-medium">{k}</label>
+              <span className="num text-end text-[13px] text-muted-foreground">{formatNumber(b.current)}</span>
+              <input
+                id={`tg-${i}`}
+                inputMode="numeric"
+                dir="ltr"
+                placeholder="—"
+                value={values[k]}
+                onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+                aria-invalid={invalid}
+                className={`num h-10 w-full rounded-lg border bg-card px-3 text-start text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ${invalid ? "border-bad" : "border-input focus-visible:border-ring"}`}
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <div className="mt-3 flex items-center justify-between rounded-xl bg-muted px-4 py-3 font-bold">
+        <span>الإجمالي</span>
+        <span className="num">{total ? formatNumber(total) : "—"}</span>
+      </div>
+      <p className="mt-2 text-[13px] text-muted-foreground">
+        {bad.length ? <span className="text-bad">اكتب أرقامًا صحيحة فقط في: {bad.join("، ")}.</span> : `مُدخل لـ ${formatNumber(entered.length)} من ${formatNumber(rows.length)} فرعًا. اترك الخانة فارغة للفرع الذي لم يُحدَّد مستهدفه.`}
+      </p>
+      <div className="mt-4 flex gap-2">
+        <button type="button" onClick={save} disabled={saving || bad.length > 0} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[15px] font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          حفظ المستهدف
+        </button>
+        <button type="button" onClick={onDone} className="h-11 rounded-full border px-5 text-[15px] hover:bg-accent">إلغاء</button>
+      </div>
     </div>
   )
 }

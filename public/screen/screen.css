@@ -189,3 +189,99 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .clock { flex-shrink: 0; white-space: nowrap; margin-right: 24px; }
 .clock b { font-size: 50px; }
 .brp .tw { -webkit-box-flex: 1; flex: 1; min-width: 0; margin: 0 16px; }
+
+/* five views: header buttons stay on one line */
+.views .dot { font-size: 17px; padding: 8px 10px 8px 14px; margin-left: 8px; }
+.views .dot b { width: 28px; height: 28px; font-size: 16px; margin-left: 8px; }
+.hd h1 { font-size: 44px; }
+
+/* 1 · students and withdrawal: seven indicators */
+.kpis.k7 .k { padding: 18px 18px; margin-left: 14px; }
+.kpis.k7 .k:last-child { margin-left: 0; }
+.kpis.k7 .k > span { font-size: 18px; }
+.kpis.k7 .k > b { font-size: 42px; margin-top: 12px; }
+.kpis.k7 .hero > b { font-size: 52px; }
+.kpis.k7 .k small { font-size: 15px; }
+.kpis.k7 .gw { width: 140px; }
+.kpis.k7 .gauge { width: 140px; height: 80px; }
+.kpis.k7 .gw b { font-size: 28px; }
+.k.tg { border: 2px dashed rgba(216, 177, 75, .6); background: rgba(216, 177, 75, .07); }
+.k.tg > span { color: var(--gold); }
+.k > b.soft { font-size: 28px; color: var(--gold); }
+.k > b.mid { font-size: 40px; }
+.b1 .big { flex: 1.75; }
+.mrow { display: flex; align-items: center; }
+.mrow .n { width: 150px; flex-shrink: 0; font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.mrow .tw { flex: 1; min-width: 0; margin: 0 14px; }
+.mrow b { width: 88px; flex-shrink: 0; font-size: 21px; font-weight: 800; text-align: left; }
+.mrow small { width: 84px; flex-shrink: 0; font-size: 16px; color: var(--mut); text-align: left; }
+.mrow.mh { font-size: 16px; font-weight: 700; color: var(--mut); margin-bottom: 4px; }
+.mrow.mh .n, .mrow.mh small { font-size: 16px; font-weight: 700; color: var(--mut); }
+.tr2 { display: block; height: 16px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.tr2 i { display: block; height: 100%; border-radius: 99px; }
+
+/* 2 · satisfaction and communication */
+.b2 .big { flex: 1.5; }
+.irow { display: flex; align-items: center; }
+.irow .n { width: 190px; flex-shrink: 0; font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.irow .tw { flex: 1; min-width: 0; margin: 0 14px; }
+.irow b { width: 100px; flex-shrink: 0; font-size: 21px; font-weight: 800; text-align: left; }
+.irow .m { width: 110px; flex-shrink: 0; font-size: 19px; color: var(--mut); text-align: left; }
+.irow.ih { margin-bottom: 4px; }
+.irow.ih .n, .irow.ih b, .irow.ih .m { font-size: 16px; font-weight: 700; color: var(--mut); }
+.ibar { position: relative; display: block; height: 16px; border-radius: 99px; background: var(--track); }
+.ibar i { position: absolute; top: 0; bottom: 0; right: 0; border-radius: 99px; background: var(--sky); }
+.ibar em { position: absolute; top: -6px; bottom: -6px; width: 4px; margin-right: -2px; border-radius: 2px; background: var(--gold); }
+.warnt { color: var(--warn); font-weight: 800; }
+.note.top { margin: 0 0 10px; }
+.common { font-size: 20px; padding: 10px 14px; border-radius: 14px; background: var(--track); margin-bottom: 10px; }
+.crow { display: flex; align-items: center; font-size: 19px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.crow:last-child { border: 0; }
+.crow .n { width: 190px; flex-shrink: 0; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.crow > span:not(.n) { flex: 1; }
+.crow.ch, .crow.ch .n { font-size: 16px; font-weight: 700; color: var(--mut); }
+
+/* 4 · social media by school */
+.kpis.slim { height: 120px; }
+.k.row { flex-direction: row; align-items: center; justify-content: space-between; }
+.k.row > b { margin: 0; }
+.k.row small { margin: 0; }
+.b4 > .card.sc { flex: 1; }
+.bhd { display: flex; align-items: center; margin-bottom: 14px; }
+.bhd img { width: 84px; height: 84px; border-radius: 20px; background: #fff; object-fit: contain; padding: 8px; margin-left: 16px; flex-shrink: 0; }
+.bhd b { display: block; font-size: 26px; font-weight: 800; }
+.bhd span { font-size: 16px; color: var(--mut); }
+.btot { font-size: 52px; font-weight: 800; line-height: 1; }
+.bchg { font-size: 17px; color: var(--mut); margin: 8px 0 10px; }
+.plist { display: flex; flex-direction: column; }
+.prow { display: flex; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.prow:last-child { border: 0; }
+.prow .pl { margin-left: 12px; }
+.prow .tw { flex: 1; min-width: 0; margin: 0 12px; }
+.prow .tr { display: block; height: 12px; }
+.prow b { width: 110px; flex-shrink: 0; font-size: 21px; font-weight: 800; text-align: left; }
+.foot-note { position: absolute; left: 48px; bottom: 36px; font-size: 15px; color: var(--mut); }
+
+/* 5 · WhatsApp channels */
+.wrow { display: flex; align-items: center; }
+.wrow .n { width: 290px; flex-shrink: 0; font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wrow .tw { flex: 1; min-width: 0; margin: 0 14px; }
+.wrow .tr { display: block; height: 14px; }
+.wrow b { width: 100px; flex-shrink: 0; font-size: 21px; font-weight: 800; text-align: left; }
+.dlt { width: 90px; flex-shrink: 0; font-size: 17px; font-weight: 800; text-align: left; }
+.dlt.up { color: var(--ok); } .dlt.dn { color: var(--bad); } .dlt.no { color: var(--mut); font-weight: 400; }
+.sep { color: var(--mut); margin: 0 10px; }
+
+/* tighter header so the longest title fits beside five buttons */
+.views .dot { font-size: 16px; padding: 7px 9px 7px 12px; margin-left: 6px; }
+.views .dot b { width: 26px; height: 26px; font-size: 15px; margin-left: 7px; }
+.hd h1 { font-size: 40px; }
+.clock b { font-size: 46px; }
+.clock { margin-right: 18px; }
+.hd > .brand { margin-left: 18px; }
+.irow b { width: 120px; } .irow .m { width: 130px; }
+.irow.ih .n, .irow.ih b, .irow.ih .m { font-size: 15px; white-space: nowrap; }
+.prow { padding: 12px 0; }
+.card.sc { display: flex; flex-direction: column; }
+.card.sc .plist { flex: 1; }
+.bshare { font-size: 16px; color: var(--mut); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 8px; }

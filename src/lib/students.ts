@@ -4,7 +4,7 @@
  * nothing is recomputed except the checks that warn when the sheets disagree.
  */
 import * as XLSX from "xlsx"
-import type { StudentCounts, StudentRow } from "@/data/types"
+import type { StudentCounts, StudentRow, StudentTarget } from "@/data/types"
 
 export class StudentFileError extends Error {}
 
@@ -192,4 +192,24 @@ export async function readStudentFile(file: File): Promise<StudentParse> {
     throw new StudentFileError("تعذّر فتح الملف. تأكد أنه ملف Excel سليم.")
   }
   return parseStudentWorkbook(wb, file.name)
+}
+
+/* ---------------------------------------------------------------- next-year target */
+export const isTarget = (d: StudentCounts | StudentTarget): d is StudentTarget => (d as StudentTarget).kind === "target"
+export const isPull = (d: StudentCounts | StudentTarget): d is StudentCounts => !isTarget(d) && !!(d as StudentCounts).date && Array.isArray((d as StudentCounts).branches)
+/** «2026-2027» → «2027-2028»; without a year in the file, from the pull date (a school year starts in August). */
+export function nextYear(c: StudentCounts): string {
+  const m = /^(\d{4})-(\d{4})$/.exec(c.year || "")
+  if (m) return `${Number(m[1]) + 1}-${Number(m[2]) + 1}`
+  const d = new Date(c.date + "T12:00:00")
+  const start = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1
+  return `${start + 1}-${start + 2}`
+}
+export const yearLabel = (y: string) => y.replace("-", "/")
+/** The total the card shows, how many of this pull's branches have a target, and the current students of all branches. */
+export function targetSummary(t: StudentTarget | null, c: StudentCounts) {
+  const names = c.branches.map((b) => shortName(b.name))
+  const set = names.filter((n) => t && typeof t.branches[n] === "number" && t.branches[n] > 0)
+  const total = set.reduce((a, n) => a + (t ? t.branches[n] : 0), 0)
+  return { total, entered: set.length, of: names.length, complete: set.length === names.length && names.length > 0, current: c.total.current }
 }

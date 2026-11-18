@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { AlertTriangle, ArrowDownUp, Building2, ChevronDown, CircleGauge, Info, Percent, Search, Sparkles, UserMinus, Users, X } from "lucide-react"
-import type { StudentCounts, StudentRow } from "@/data/types"
+import { AlertTriangle, ArrowDownUp, Building2, ChevronDown, CircleGauge, Info, Pencil, Percent, Search, Sparkles, Target, UserMinus, Users, X } from "lucide-react"
+import type { StudentCounts, StudentRow, StudentTarget } from "@/data/types"
 import { formatDate, formatNumber } from "@/lib/format"
-import { OCCUPANCY_LEVELS, WITHDRAWAL_LEVELS, growthPreliminary, notesFor, occupancyStatus, pct, shortName, signedPct, withdrawalStatus, type Tone } from "@/lib/students"
+import { OCCUPANCY_LEVELS, WITHDRAWAL_LEVELS, growthPreliminary, notesFor, occupancyStatus, pct, shortName, signedPct, targetSummary, withdrawalStatus, yearLabel, type Tone } from "@/lib/students"
 import { cn } from "@/lib/utils"
 
 /**
@@ -45,7 +45,7 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "growth", label: "النمو" },
 ]
 
-export function Dashboard({ counts, prev, branch, onBranch }: { counts: StudentCounts; prev: StudentCounts | null; branch: string | null; onBranch: (name: string | null) => void }) {
+export function Dashboard({ counts, prev, branch, onBranch, target, targetYear, onEditTarget }: { counts: StudentCounts; prev: StudentCounts | null; branch: string | null; onBranch: (name: string | null) => void; target: StudentTarget | null; targetYear: string; onEditTarget: () => void }) {
   const row = (branch && counts.branches.find((b) => b.name === branch)) || counts.total
   const prevRow = prev ? (branch ? prev.branches.find((b) => shortName(b.name) === shortName(branch)) : prev.total) ?? null : null
   const preliminary = growthPreliminary(counts)
@@ -53,7 +53,7 @@ export function Dashboard({ counts, prev, branch, onBranch }: { counts: StudentC
 
   return (
     <div className="flex flex-col gap-4">
-      <Kpis row={row} prev={prevRow} prevDate={prev?.date ?? null} preliminary={preliminary} branchNotes={branch ? notesFor(counts, branch) : []} />
+      <Kpis row={row} prev={prevRow} prevDate={prev?.date ?? null} preliminary={preliminary} branchNotes={branch ? notesFor(counts, branch) : []} target={<TargetCard target={target} counts={counts} year={targetYear} onEdit={onEditTarget} />} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Bars counts={counts} branch={branch} onPick={toggle} preliminary={preliminary} className="xl:col-span-2" />
         <div className="flex min-w-0 flex-col gap-4">
@@ -66,7 +66,7 @@ export function Dashboard({ counts, prev, branch, onBranch }: { counts: StudentC
           <Alerts counts={counts} />
         </div>
       </div>
-      <Table counts={counts} branch={branch} onPick={toggle} preliminary={preliminary} />
+      <Table counts={counts} branch={branch} onPick={toggle} preliminary={preliminary} target={target} targetYear={targetYear} />
       <Definitions counts={counts} />
     </div>
   )
@@ -97,7 +97,7 @@ function KpiHead({ icon, label, light }: { icon: ReactNode; label: string; light
   )
 }
 
-function Kpis({ row, prev, prevDate, preliminary, branchNotes }: { row: StudentRow; prev: StudentRow | null; prevDate: string | null; preliminary: boolean; branchNotes: { title: string; text: string }[] }) {
+function Kpis({ row, prev, prevDate, preliminary, branchNotes, target }: { row: StudentRow; prev: StudentRow | null; prevDate: string | null; preliminary: boolean; branchNotes: { title: string; text: string }[]; target: ReactNode }) {
   const ws = withdrawalStatus(row.withdrawalRate)
   const os = occupancyStatus(row.occupancy)
   const regular = row.regular ?? null
@@ -115,7 +115,7 @@ function Kpis({ row, prev, prevDate, preliminary, branchNotes }: { row: StudentR
           </div>
         </div>
       )}
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-[1.25fr_repeat(5,minmax(0,1fr))]">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[1.25fr_repeat(6,minmax(0,1fr))]">
         <li className="col-span-2 min-w-0 rounded-2xl p-5 text-band-foreground md:col-span-1" style={{ background: "linear-gradient(160deg, hsl(var(--band)), hsl(240 60% 20%))" }}>
           <KpiHead icon={<Users className="h-4 w-4" aria-hidden="true" />} label="الطلاب الحاليون" light />
           <p className="num mt-3 text-[34px] font-extrabold leading-none">{formatNumber(row.current)}</p>
@@ -163,8 +163,56 @@ function Kpis({ row, prev, prevDate, preliminary, branchNotes }: { row: StudentR
             <b className="num text-foreground">{formatNumber(Math.max(row.capacity - row.current, 0))}</b> مقعدًا متاحًا
           </p>
         </Kpi>
+        {target}
       </ul>
     </>
+  )
+}
+
+/** Next year's target: always the total of the branch targets (the platform owner's choice), whatever branch is picked. */
+function TargetCard({ target, counts, year, onEdit }: { target: StudentTarget | null; counts: StudentCounts; year: string; onEdit: () => void }) {
+  const t = targetSummary(target, counts)
+  const share = t.total > 0 ? t.current / t.total : 0
+  return (
+    <li className={cn("col-span-2 min-w-0 rounded-2xl p-5 md:col-span-1 xl:col-span-2 2xl:col-span-1", t.total ? "border border-gold/60 bg-gold-soft" : "border-2 border-dashed border-gold/60 bg-gold-soft/60")}>
+      <header className="flex items-center gap-2 whitespace-nowrap text-[14px] font-bold text-muted-foreground">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-gold/20 text-gold-ink"><Target className="h-4 w-4" aria-hidden="true" /></span>
+        مستهدف <bdi dir="ltr">{yearLabel(year)}</bdi>
+        {t.total > 0 && (
+          <button type="button" onClick={onEdit} aria-label="تعديل المستهدف" className="ms-auto grid h-8 w-8 place-items-center rounded-full text-gold-ink hover:bg-gold/20">
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
+      </header>
+      {t.total === 0 ? (
+        <>
+          <p className="mt-3 text-[14px] text-muted-foreground">لم يُحدَّد بعد</p>
+          <button type="button" onClick={onEdit} className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-[13.5px] font-bold text-primary-foreground hover:bg-primary/90">
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            تحديد المستهدف
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="num mt-3 text-[30px] font-extrabold leading-none">{formatNumber(t.total)}</p>
+          {t.complete ? (
+            <>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gold/20" aria-hidden="true">
+                <span className="block h-full rounded-full bg-gold" style={{ width: `${Math.min(share, 1) * 100}%` }} />
+              </div>
+              <p className="mt-2 text-[12.5px] leading-5 text-muted-foreground">
+                الحاليون <b className="num text-foreground">{pct(share)}</b> من المستهدف ·{" "}
+                {t.current < t.total ? <>ينقص <b className="num text-foreground">{formatNumber(t.total - t.current)}</b> طالبًا</> : <>تجاوزه بـ <b className="num text-foreground">{formatNumber(t.current - t.total)}</b></>}
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-[12.5px] leading-5 text-muted-foreground">
+              مُدخل لـ <b className="num text-foreground">{formatNumber(t.entered)}</b> من {formatNumber(t.of)} فرعًا، فلا تُحسب نسبة بعد.
+            </p>
+          )}
+        </>
+      )}
+    </li>
   )
 }
 
@@ -581,7 +629,7 @@ function Alerts({ counts }: { counts: StudentCounts }) {
 }
 
 /* -------------------------------------------------------------------- table */
-type SortKey = "name" | "current" | "newcomers" | "withdrawn" | "withdrawalRate" | "occupancy" | "capacity" | "growth"
+type SortKey = "name" | "current" | "newcomers" | "withdrawn" | "withdrawalRate" | "occupancy" | "capacity" | "growth" | "target"
 const COLS: { key: SortKey; label: string }[] = [
   { key: "name", label: "الفرع" },
   { key: "current", label: "الحاليون" },
@@ -591,9 +639,12 @@ const COLS: { key: SortKey; label: string }[] = [
   { key: "occupancy", label: "نسبة الإشغال" },
   { key: "capacity", label: "الطاقة التشغيلية" },
   { key: "growth", label: "النمو" },
+  { key: "target", label: "مستهدف العام القادم" },
 ]
 
-function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts; branch: string | null; onPick: (n: string) => void; preliminary: boolean }) {
+function Table({ counts, branch, onPick, preliminary, target, targetYear }: { counts: StudentCounts; branch: string | null; onPick: (n: string) => void; preliminary: boolean; target: StudentTarget | null; targetYear: string }) {
+  const tgt = (name: string) => (target && target.branches[shortName(name)] > 0 ? target.branches[shortName(name)] : null)
+  const tsum = targetSummary(target, counts)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "current", dir: -1 })
   const [q, setQ] = useState("")
   const rows = useMemo(() => {
@@ -601,9 +652,10 @@ function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts;
     const list = counts.branches.filter((b) => !t || b.name.includes(t))
     return list.sort((a, b) => {
       if (sort.key === "name") return sort.dir * shortName(a.name).localeCompare(shortName(b.name), "ar")
+      if (sort.key === "target") return sort.dir * ((tgt(a.name) ?? -Infinity) - (tgt(b.name) ?? -Infinity))
       return sort.dir * ((a[sort.key] ?? -Infinity) - (b[sort.key] ?? -Infinity))
     })
-  }, [counts, sort, q])
+  }, [counts, sort, q, target]) // eslint-disable-line react-hooks/exhaustive-deps
   const t = counts.total
   return (
     <Card className="p-0">
@@ -619,7 +671,7 @@ function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts;
         </label>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-[14px]">
+        <table className="w-full min-w-[960px] text-[14px]">
           <caption className="sr-only">مؤشرات أعداد الطلاب لكل فرع</caption>
           <thead>
             <tr className="border-y bg-muted/50 text-[12.5px] text-muted-foreground">
@@ -628,7 +680,7 @@ function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts;
                 return (
                   <th key={c.key} scope="col" aria-sort={active ? (sort.dir === 1 ? "ascending" : "descending") : undefined} className="px-3 py-2 text-start font-bold first:ps-5">
                     <button type="button" onClick={() => setSort((s) => ({ key: c.key, dir: s.key === c.key ? (s.dir === 1 ? -1 : 1) : c.key === "name" ? 1 : -1 }))} className={cn("inline-flex items-center gap-1 rounded px-1 py-1 hover:text-foreground", active && "text-foreground")}>
-                      {c.label}
+                      {c.key === "target" ? <>مستهدف <bdi dir="ltr">{yearLabel(targetYear)}</bdi></> : c.label}
                       {c.key === "growth" && preliminary && <span className="rounded-full bg-gold-soft px-1.5 text-[10.5px] font-bold text-gold-ink">مبدئية</span>}
                       {active ? <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", sort.dir === 1 && "rotate-180")} aria-hidden="true" /> : <ArrowDownUp className="h-3 w-3 opacity-40" aria-hidden="true" />}
                     </button>
@@ -668,6 +720,7 @@ function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts;
                   <td className={cn("num px-3 py-2.5 font-bold", b.growth === null ? "text-muted-foreground" : b.growth >= 0 ? "text-ok" : "text-bad")}>
                     <Ltr>{signedPct(b.growth)}</Ltr>
                   </td>
+                  <td className="num px-3 py-2.5">{tgt(b.name) !== null ? formatNumber(tgt(b.name)!) : <span className="text-muted-foreground">—</span>}</td>
                 </tr>
               )
             })}
@@ -687,6 +740,7 @@ function Table({ counts, branch, onPick, preliminary }: { counts: StudentCounts;
               <td className="num px-3 py-3">{pct(t.occupancy)}</td>
               <td className="num px-3 py-3">{formatNumber(t.capacity)}</td>
               <td className={cn("num px-3 py-3", (t.growth ?? 0) >= 0 ? "text-ok" : "text-bad")}><Ltr>{signedPct(t.growth)}</Ltr></td>
+              <td className="num px-3 py-3">{tsum.total ? formatNumber(tsum.total) : "—"}</td>
             </tr>
           </tfoot>
         </table>

@@ -18,7 +18,7 @@ const NAV: { page: Route["page"]; label: string; short: string; icon: typeof Hou
   { page: "overview", label: "الرئيسية", short: "الرئيسية", icon: House },
   { page: "library", label: "المكتبة", short: "المكتبة", icon: FolderOpen },
   { page: "calendar", label: "رحلة التواصل", short: "الرحلة", icon: CalendarDays },
-  { page: "social", label: "التواصل الاجتماعي", short: "التواصل", icon: Megaphone },
+  { page: "social", label: "التواصل الاجتماعي", short: "التواصل", icon: Megaphone, also: ["whatsapp"] },
   { page: "csr", label: "المسؤولية المجتمعية", short: "المسؤولية", icon: HandHeart },
   { page: "contacts", label: "دليل الأرقام", short: "الأرقام", icon: PhoneCall },
   { page: "transport", label: "النقل المدرسي", short: "النقل", icon: BusFront },

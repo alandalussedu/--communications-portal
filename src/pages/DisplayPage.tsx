@@ -15,18 +15,20 @@ import { cn } from "@/lib/utils"
  */
 
 const VIEWS = [
-  { n: 1, title: "أعداد الطلاب", hint: "الحاليون والإشغال" },
-  { n: 2, title: "الانسحاب", hint: "العدد والنسبة لكل فرع" },
+  { n: 1, title: "الطلاب والانسحاب", hint: "الإشغال والانسحاب والمستهدف" },
+  { n: 2, title: "رضا العملاء", hint: "وجودة التواصل لكل فرع" },
   { n: 3, title: "المسؤولية المجتمعية", hint: "خطط الفروع والاعتماد" },
-  { n: 4, title: "التواصل الاجتماعي", hint: "المتابعون باختصار" },
+  { n: 4, title: "التواصل الاجتماعي", hint: "حسب المدارس والشركة" },
+  { n: 5, title: "قنوات الواتساب", hint: "المشتركون لكل قناة" },
 ]
+const COUNT = VIEWS.length
 const VIEW_KEY = "andalus-display-view"
 type Bridge = { __andalusScreen?: { token(): Promise<string | null> } }
 
 function storedView(): number {
   try {
     const v = Number(localStorage.getItem(VIEW_KEY))
-    return v >= 1 && v <= 4 ? v : 1
+    return v >= 1 && v <= COUNT ? v : 1
   } catch {
     return 1
   }
@@ -67,7 +69,7 @@ export function DisplayPage() {
   }, [view])
 
   const pick = useCallback((n: number) => {
-    const v = ((n - 1 + 4) % 4) + 1
+    const v = ((n - 1 + COUNT) % COUNT) + 1
     setView(v)
     frame.current?.contentWindow?.postMessage({ type: "andalus-screen", view: v }, window.location.origin)
   }, [])
@@ -84,7 +86,7 @@ export function DisplayPage() {
       const t = e.target as HTMLElement | null
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
       if (e.altKey || e.ctrlKey || e.metaKey) return
-      if (/^[1-4]$/.test(e.key)) pick(Number(e.key))
+      if (/^[1-5]$/.test(e.key)) pick(Number(e.key))
       else if (e.key === "ArrowLeft") pick(view + 1)
       else if (e.key === "ArrowRight") pick(view - 1)
       else if (e.key === "f" || e.key === "F") full()
@@ -127,7 +129,7 @@ export function DisplayPage() {
           </span>
         }
         title="شاشة العرض"
-        description="أربعة عروض مختصرة للشاشة الكبيرة. اختر العرض بنفسك، ولا ينتقل وحده."
+        description="خمسة عروض مختصرة للشاشة الكبيرة. اختر العرض بنفسك، ولا ينتقل وحده."
         actions={
           <>
             <button type="button" onClick={copyLink} title={tvLink} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold text-primary hover:bg-accent">
@@ -141,7 +143,7 @@ export function DisplayPage() {
           </>
         }
       />
-      <div role="radiogroup" aria-label="العرض" className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div role="radiogroup" aria-label="العرض" className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {VIEWS.map((v) => {
           const on = v.n === view
           return (
@@ -170,7 +172,7 @@ export function DisplayPage() {
       </div>
       <p className="mt-3 flex flex-wrap justify-between gap-2 text-[13.5px] text-muted-foreground">
         <span>
-          بلوحة المفاتيح: <kbd className="rounded border bg-card px-1.5 font-bold">1</kbd>–<kbd className="rounded border bg-card px-1.5 font-bold">4</kbd> أو الأسهم · <kbd className="rounded border bg-card px-1.5 font-bold">F</kbd> ملء الشاشة
+          بلوحة المفاتيح: <kbd className="rounded border bg-card px-1.5 font-bold">1</kbd>–<kbd className="rounded border bg-card px-1.5 font-bold">5</kbd> أو الأسهم · <kbd className="rounded border bg-card px-1.5 font-bold">F</kbd> ملء الشاشة
         </span>
         <span>على التلفزيون: افتح الرابط وادخل بحساب «شاشة عرض» من صفحة الأعضاء، والتحكم بأرقام الريموت أو أسهمه.</span>
       </p>

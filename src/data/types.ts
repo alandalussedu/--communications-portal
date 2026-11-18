@@ -575,3 +575,17 @@ export type StudentCounts = {
   fileName: string | null
   uploadedAt: string
 }
+
+/**
+ * Next school year's student target, typed in by the platform owner (not from the
+ * Excel file). One document per year in studentCounts, id `target-<year>`;
+ * `branches` is keyed by the short branch name («أبحر»). The total is their sum.
+ */
+export type StudentTarget = {
+  id: string
+  kind: "target"
+  /** e.g. 2027-2028 */
+  year: string
+  branches: Record<string, number>
+  updatedAt: string
+}

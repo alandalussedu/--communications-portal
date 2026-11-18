@@ -44,10 +44,10 @@ create or replace function public.owner_collection(c text) returns boolean
   as $$ select c in ('studentCounts') $$;
 
 -- ما تقرؤه حسابات «شاشة» (للقراءة فقط) فوق المجموعات العامة، ولا شيء غيره.
--- csrPlans أُضيفت لعرض «المسؤولية المجتمعية» في شاشة العرض (بإذن مدير المنصة)
+-- csrPlans لعرض «المسؤولية المجتمعية» وindicators لعرض «رضا العملاء وجودة التواصل» في شاشة العرض (بإذن مدير المنصة)
 create or replace function public.screen_collection(c text) returns boolean
   language sql immutable
-  as $$ select c in ('studentCounts', 'csrPlans') $$;
+  as $$ select c in ('studentCounts', 'csrPlans', 'indicators') $$;
 
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import type { BranchContacts, CsrPlan, PbxOfficer, PbxReport, StudentCounts, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
+import type { BranchContacts, CsrPlan, PbxOfficer, PbxReport, StudentCounts, StudentTarget, AlertState, Branch, CalendarEvent, CollectionName, ComplaintReport, CsrInitiative, CsrPartner, Competitor, CompetitorsMeta, ConnectionState, FileItem, IndicatorKey, IndicatorSummary, Meta, RemedialFile, RemedialLogEntry, RemedialMonthly, RemedialRow, RemedialStage, RemedialSync, Settings, SocialAccount, SocialReading, StageSummary, SyncEvent } from "./types"
 import { buildLink } from "./links"
 import { cryptoAvailable, decryptDoc, encryptDoc, fromB64, importDataKey, isEncrypted, keyIdOf, unwrapKey, wrapKey, type VaultDoc } from "@/lib/vault"
 import { standalonePage } from "@/lib/runtime"
@@ -75,7 +75,8 @@ export type Data = {
   csrPartners: CsrPartner[]
   pbxOfficers: PbxOfficer[]
   pbxReports: PbxReport[]
-  studentCounts: StudentCounts[]
+  /** pulls (StudentCounts) and next-year targets (StudentTarget) share the owner-only collection */
+  studentCounts: (StudentCounts | StudentTarget)[]
   csrPlans: CsrPlan[]
   /** «دليل أرقام الفروع»: the settings document «contacts» (public) */
   contacts: BranchContacts | null
@@ -141,6 +142,7 @@ type Store = {
   deletePbxReport(id: string): Promise<boolean>
   saveStudentCounts(c: StudentCounts): Promise<boolean>
   deleteStudentCounts(id: string): Promise<boolean>
+  saveStudentTarget(t: StudentTarget): Promise<boolean>
   savePbxOfficers(list: PbxOfficer[], removed: string[]): Promise<boolean>
   vault: Vault
   member: Member
@@ -585,6 +587,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [write, putProtected],
   )
   const deleteStudentCounts = useCallback((id: string) => write((db) => db.doc(`studentCounts/${id}`).delete(), "حُذف السحب"), [write])
+  const saveStudentTarget = useCallback(
+    (t: StudentTarget) =>
+      write(async (db) => {
+        const { id, ...body } = t
+        await putProtected(db, "studentCounts", id, body as Record<string, unknown>)
+      }, "حُفظ مستهدف العام القادم"),
+    [write, putProtected],
+  )
   const savePbxOfficers = useCallback(
     (list: PbxOfficer[], removed: string[]) =>
       write(async (db) => {
@@ -740,11 +750,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deletePbxReport,
       saveStudentCounts,
       deleteStudentCounts,
+      saveStudentTarget,
       savePbxOfficers,
       vault,
       member,
     }),
-    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, saveCsrInitiative, deleteCsrInitiative, saveCsrPartner, deleteCsrPartner, savePbxReport, deletePbxReport, saveStudentCounts, deleteStudentCounts, savePbxOfficers, vault, member],
+    [connection, loaded, allLoaded, data, lastSync, canEdit, snapshotAt, refresh, reconnect, saveBranchLinks, saveFile, deleteFile, saveSettings, markAlert, saveSocialAccount, deleteSocialAccount, saveSocialReadings, saveFileSections, saveEvent, deleteEvent, saveComplaintReports, deleteComplaintReport, saveCsrInitiative, deleteCsrInitiative, saveCsrPartner, deleteCsrPartner, savePbxReport, deletePbxReport, saveStudentCounts, deleteStudentCounts, saveStudentTarget, savePbxOfficers, vault, member],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

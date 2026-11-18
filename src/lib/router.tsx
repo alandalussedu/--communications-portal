@@ -10,6 +10,7 @@ export type Route =
   | { page: "builder" }
   | { page: "alerts" }
   | { page: "social" }
+  | { page: "whatsapp" }
   | { page: "calendar" }
   | { page: "remedial"; slug?: string }
   | { page: "competitors" }
@@ -23,7 +24,7 @@ export type Route =
   | { page: "transport"; view?: string }
   | { page: "csr"; tab?: string; id?: string }
 
-const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints", "pbx", "contacts", "students", "display"] as const
+const TOKENS = ["overview", "indicators", "reports", "library", "sources", "builder", "alerts", "social", "remedial", "calendar", "competitors", "members", "complaints", "pbx", "contacts", "students", "display", "whatsapp"] as const
 
 /** Pages behind the password (the «المؤشرات» tab and everything under it). */
 export const LOCKED_PAGES: Route["page"][] = ["indicators", "reports", "branch", "remedial", "complaints", "pbx", "students", "display", "builder", "alerts", "sources", "competitors"]

@@ -1,13 +1,14 @@
 /*
  * شاشة العرض (للتلفزيون في غرفة المدير ولتبويب «شاشة العرض» في المنصة).
- * أربعة عروض يختارها المشاهد يدويًا: أعداد الطلاب، الانسحاب، المسؤولية المجتمعية، التواصل الاجتماعي.
+ * خمسة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
+ * التواصل الاجتماعي حسب المدارس، قنوات الواتساب.
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
  * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
  *
  * على التلفزيون: تدخل بحساب «شاشة عرض» (أو مدير المنصة) عبر Supabase Auth REST وتحفظ جلستها.
  * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
  * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
- * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans والمجموعات العامة (screen_collection).
+ * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators والمجموعات العامة (screen_collection).
  * الرابط والمفتاح العام (publishable) عامّان بطبيعتهما كما في src/config.ts.
  */
 (function () {
@@ -19,7 +20,9 @@
   var VIEW_STORE = 'andalus-screen-view'
   var LEVELS = { wdGood: 0.08, wdFollow: 0.12, ocHigh: 0.85, ocGood: 0.7 } // اعتمدها مدير المنصة
   var EMBED = /[?&]embed=1/.test(location.search)
-  var VIEWS = [[1, 'أعداد الطلاب'], [2, 'الانسحاب'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي']]
+  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب']]
+  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب']
+  var N = VIEWS.length
   var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
   var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
   var MARKS = {"youtube": {"bg": "#ffffff", "fill": "#FF0000", "d": "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"}, "facebook": {"bg": "#3B5998", "fill": "#ffffff", "d": "M15.12 5.32H17V2.14A24.5 24.5 0 0 0 14.26 2c-2.72 0-4.58 1.66-4.58 4.7V9.5H6.6v3.56h3.08V22h3.68v-8.94h3.07l.46-3.56h-3.53V7.07c0-1.03.28-1.75 1.76-1.75z"}, "linkedin": {"bg": "#0077B5", "fill": "#ffffff", "d": "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452z"}, "snapchat": {"bg": "#FFFC00", "fill": "#000000", "d": "M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.39.839-1.213 1.168-.089.029-.209.075-.344.119-.45.135-1.139.36-1.333.81-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014.255.044.435.27.42.509 0 .075-.015.149-.045.225-.24.569-1.273.988-3.146 1.271-.059.091-.12.375-.164.57-.029.179-.074.36-.134.553-.076.271-.27.405-.555.405h-.03c-.135 0-.313-.031-.538-.074-.36-.075-.765-.135-1.273-.135-.3 0-.599.015-.913.074-.6.104-1.123.464-1.723.884-.853.599-1.826 1.288-3.294 1.288-.06 0-.119-.015-.18-.015h-.149c-1.468 0-2.427-.675-3.279-1.288-.599-.42-1.107-.779-1.707-.884-.314-.045-.629-.074-.928-.074-.54 0-.958.089-1.272.149-.211.043-.391.074-.54.074-.374 0-.523-.224-.583-.42-.061-.192-.09-.389-.135-.567-.046-.181-.105-.494-.166-.57-1.918-.222-2.95-.642-3.189-1.226-.031-.063-.052-.15-.055-.225-.015-.243.165-.465.42-.509 3.264-.54 4.73-3.879 4.791-4.02l.016-.029c.18-.345.224-.645.119-.869-.195-.434-.884-.658-1.332-.809-.121-.029-.24-.074-.346-.119-1.107-.435-1.257-.93-1.197-1.273.09-.479.674-.793 1.168-.793.146 0 .27.029.383.074.42.194.789.3 1.104.3.234 0 .384-.06.465-.105l-.046-.569c-.098-1.626-.225-3.651.307-4.837C7.392 1.077 10.739.807 11.727.807l.419-.015h.06z"}, "instagram": {"bg": "#d62976", "fill": "#ffffff", "d": "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"}, "x": {"bg": "#000000", "fill": "#ffffff", "d": "M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"}, "tiktok": {"bg": "#000000", "fill": "#ffffff", "d": "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"}, "whatsapp": {"bg": "#25D366", "fill": "#ffffff", "d": "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"}}
@@ -27,16 +30,17 @@
   var app = document.getElementById('app')
   var stage = document.getElementById('stage')
   var session = null
-  var data = { counts: null, plans: [], accounts: [], readings: [] }
+  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [] } }
+  var data = EMPTY_DATA()
   var view = 1
   var online = true
   var lastOk = null
   var pollTimer = null
   var started = false
 
-  try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= 4) view = saved } catch (e) { /* no storage */ }
+  try { var saved = parseInt(localStorage.getItem(VIEW_STORE), 10); if (saved >= 1 && saved <= 5) view = saved } catch (e) { /* no storage */ }
   var qv = /[?&]view=(\d)/.exec(location.search)
-  if (qv && +qv[1] >= 1 && +qv[1] <= 4) view = +qv[1]
+  if (qv && +qv[1] >= 1 && +qv[1] <= 5) view = +qv[1]
 
   /* ------------------------------------------------------------ fit 1920×1080 to the screen */
   function fit() {
@@ -183,11 +187,13 @@
       api('/rest/v1/docs?collection=eq.csrPlans&select=id,data'),
       api('/rest/v1/docs?collection=eq.socialAccounts&select=id,data'),
       api('/rest/v1/docs?collection=eq.socialReadings&select=id,data'),
+      api('/rest/v1/docs?collection=eq.indicators&select=id,data'),
     ])
     var rows = function (r) { return (r || []).map(function (x) { var d = x.data || {}; d.id = x.id; return d }) }
     var counts = rows(res[0]).filter(function (d) { return d.date && d.branches && d.total })
     counts.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0 })
-    var next = { counts: counts[0] || null, plans: rows(res[1]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]) }
+    var targets = rows(res[0]).filter(function (d) { return d.kind === 'target' && d.year && d.branches })
+    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]) }
     online = true
     lastOk = new Date()
     var changed = JSON.stringify(next) !== JSON.stringify(data)
@@ -198,19 +204,23 @@
   /* ------------------------------------------------------------ shared pieces */
   function subtitle() {
     var c = data.counts
-    if (view === 1) return c ? 'سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(c.date)) + '</b>' + (c.year ? ' · العام الدراسي ' + L(esc(c.year.replace('-', '/'))) : '') : ''
-    if (view === 2) return c ? 'سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(c.date)) + '</b> · المحوَّلون غير محتسبين' : ''
+    if (view === 1) return c ? 'سحب نظام الحلول الخبيرة · <b>' + esc(fmtDate(c.date)) + '</b>' : ''
+    if (view === 2) {
+      var cap = data.indicators.map(function (d) { return d.capturedAt || '' }).sort().pop()
+      return 'من المنصة الشاملة لكل فرع' + (cap ? ' · آخر قراءة <b>' + esc(fmtDate(cap)) + '</b>' : '')
+    }
     if (view === 3) {
       var read = data.plans.map(function (p) { return p.readAt || '' }).sort().pop()
-      return 'من «خطط الفروع» في ملف المنصة الشاملة لكل فرع' + (read ? ' · آخر قراءة <b>' + esc(fmtDate(read)) + '</b>' : '')
+      return 'من «خطط الفروع» لكل فرع' + (read ? ' · آخر قراءة <b>' + esc(fmtDate(read)) + '</b>' : '')
     }
     var m = latestMonth()
-    return 'أعداد المتابعين المسجّلة في المنصة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
+    if (view === 4) return 'حسابات المدارس والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
+    return 'قنوات واتساب الفروع والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
   }
   function header() {
     var dots = VIEWS.map(function (d) { return '<span class="dot' + (d[0] === view ? ' on' : '') + '"><b>' + d[0] + '</b>' + d[1] + '</span>' }).join('')
     var now = new Date()
-    return '<header class="hd"><div class="brand"><div class="mark">✦</div><div><h1>' + VIEWS[view - 1][1] + '</h1><p>' + subtitle() + '</p></div></div>' +
+    return '<header class="hd"><div class="brand"><div class="mark">✦</div><div><h1>' + TITLES[view - 1] + '</h1><p>' + subtitle() + '</p></div></div>' +
       '<div class="views">' + dots + '</div>' +
       '<div class="clock"><b id="clk">' + esc(timeFmt.format(now)) + '</b><span id="day">' + esc(dayFmt.format(now)) + '</span></div></header>'
   }
@@ -226,28 +236,47 @@
   }
   function of(n) { return '<span class="of">من ' + n + '</span>' }
 
-  /* ------------------------------------------------------------ 1 · student numbers */
+  /* ------------------------------------------------------------ 1 · students and withdrawal */
+  function nextYear(c) {
+    var m = /^(\d{4})-(\d{4})$/.exec(c.year || '')
+    if (m) return (+m[1] + 1) + '-' + (+m[2] + 1)
+    var d = new Date(String(c.date).slice(0, 10) + 'T12:00:00'), s = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1
+    return (s + 1) + '-' + (s + 2)
+  }
+  /** Next year's target: the total of the branch targets the owner typed in (shown as a total only). */
+  function targetInfo(c) {
+    var year = nextYear(c)
+    var t = data.targets.filter(function (d) { return d.year === year })[0] || null
+    var names = c.branches.map(function (b) { return short(b.name) })
+    var set = names.filter(function (n) { return t && t.branches && t.branches[n] > 0 })
+    var total = set.reduce(function (a, n) { return a + t.branches[n] }, 0)
+    return { year: year, total: total, entered: set.length, of: names.length, complete: names.length > 0 && set.length === names.length }
+  }
   function view1() {
     var c = data.counts
     if (!c) return empty('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة.')
-    var t = c.total, w = wd(t.withdrawalRate), o = oc(t.occupancy)
+    var t = c.total, w = wd(t.withdrawalRate), o = oc(t.occupancy), ti = targetInfo(c)
     var prelim = (c.notes || []).some(function (n) { return n.title.indexOf('النمو') >= 0 && /مبدئي/.test(n.title + n.text) })
-    var hero = '<div class="k hero"><span>الطلاب الحاليون</span><b>' + num(t.current) + '</b>' +
-      (t.regular != null ? '<div class="split"><i style="width:' + (t.regular / Math.max(t.current, 1) * 100).toFixed(1) + '%"></i></div><small><em class="d w"></em>منتظم ' + num(t.regular) + '<em class="d g"></em>مستجد ' + num(t.newcomers) + '</small>' : '') + '</div>'
-    var growth = t.growth != null ? '<small>نمو الحاليين <strong class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</strong> ' + (prelim ? '<i class="tag">مبدئية</i>' : '') + '</small>' : ''
-    var kpis = '<section class="kpis">' + hero +
-      '<div class="k"><span>الطلاب الجدد</span><b>' + num(t.newcomers) + '</b>' + growth + '</div>' +
+    var target = ti.total
+      ? '<div class="k tg"><span>مستهدف ' + L(ti.year.replace('-', '/')) + '</span><b>' + num(ti.total) + '</b><small>' +
+        (ti.complete ? 'الحاليون ' + pct(t.current / ti.total) + ' منه' : 'مُدخل لـ ' + ti.entered + ' من ' + ti.of + ' فرعًا') + '</small></div>'
+      : '<div class="k tg"><span>مستهدف ' + L(ti.year.replace('-', '/')) + '</span><b class="soft">لم يُحدَّد بعد</b><small>يُدخل من تبويب أعداد الطلاب</small></div>'
+    var kpis = '<section class="kpis k7">' +
+      '<div class="k hero"><span>الطلاب الحاليون</span><b>' + num(t.current) + '</b>' +
+      (t.regular != null ? '<div class="split"><i style="width:' + (t.regular / Math.max(t.current, 1) * 100).toFixed(1) + '%"></i></div><small><em class="d w"></em>منتظم ' + num(t.regular) + '<em class="d g"></em>مستجد ' + num(t.newcomers) + '</small>' : '') + '</div>' +
+      '<div class="k"><span>الطلاب الجدد</span><b>' + num(t.newcomers) + '</b>' + (t.growth != null ? '<small>نمو <strong class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</strong>' + (prelim ? ' <i class="tag">مبدئية</i>' : '') + '</small>' : '') + '</div>' +
       '<div class="k"><span>المنسحبون</span><b>' + num(t.withdrawn) + '</b>' + (t.transferred != null ? '<small>لا يشمل ' + num(t.transferred) + ' محوّلًا</small>' : '') + '</div>' +
-      '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '<i class="chip ' + w[0] + '">' + w[1] + '</i></b><small>جيد حتى ' + L('8%') + ' · مرتفع فوق ' + L('12%') + '</small></div>' +
+      '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '</b><small><i class="chip ' + w[0] + '">' + w[1] + '</i></small></div>' +
       '<div class="k gk"><span>نسبة الإشغال</span><div class="gw">' + gauge(t.occupancy) + '<b>' + pct(t.occupancy) + '</b></div><i class="chip ' + o[0] + '">' + o[1] + '</i></div>' +
-      '<div class="k"><span>الطاقة التشغيلية</span><b>' + num(t.capacity) + '</b><small><strong>' + num(Math.max(t.capacity - t.current, 0)) + '</strong> مقعدًا متاحًا</small></div></section>'
-    var B = c.branches.slice()
-    var maxCap = max(B.map(function (b) { return b.capacity })) || 1
+      '<div class="k"><span>الطاقة التشغيلية</span><b>' + num(t.capacity) + '</b><small>' + num(Math.max(t.capacity - t.current, 0)) + ' مقعدًا متاحًا</small></div>' +
+      target + '</section>'
+    var B = c.branches.slice().sort(function (a, b) { return b.current - a.current })
+    var maxCap = max(B.map(function (b) { return b.capacity })) || 1, maxW = max(B.map(function (b) { return b.withdrawalRate })) || 1e-9
     var flagged = function (name) { var s = short(name); return (c.notes || []).some(function (n) { return n.title.indexOf(s) >= 0 }) }
-    var bars = B.sort(function (a, b) { return b.occupancy - a.occupancy }).map(function (b) {
-      return '<div class="br"><span class="n">' + esc(short(b.name)) + (flagged(b.name) ? '<i class="fl">!</i>' : '') + '</span>' +
-        '<span class="tw"><span class="tr" style="display:block;width:' + (b.capacity / maxCap * 100).toFixed(1) + '%"><i class="' + oc(b.occupancy)[0] + '" style="width:' + (Math.min(b.occupancy, 1) * 100).toFixed(1) + '%"></i></span></span>' +
-        '<b>' + pct(b.occupancy) + '</b><small>' + num(b.current) + ' من ' + num(b.capacity) + '</small></div>'
+    var rows = B.map(function (b) {
+      return '<div class="mrow"><span class="n">' + esc(short(b.name)) + (flagged(b.name) ? '<i class="fl">!</i>' : '') + '</span>' +
+        '<span class="tw"><span class="tr2" style="width:' + (b.capacity / maxCap * 100).toFixed(1) + '%"><i class="' + oc(b.occupancy)[0] + '" style="width:' + (Math.min(b.occupancy, 1) * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.occupancy) + '</b>' +
+        '<span class="tw"><span class="tr2"><i class="' + wd(b.withdrawalRate)[0] + '" style="width:' + (b.withdrawalRate / maxW * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.withdrawalRate) + '</b><small>' + num(b.withdrawn) + '</small></div>'
     }).join('')
     var watch = c.branches.filter(function (b) { return b.occupancy < LEVELS.ocGood || b.withdrawalRate > LEVELS.wdFollow })
     watch.sort(function (a, b) {
@@ -265,33 +294,61 @@
       st.map(function (v, i) { return '<i style="width:' + (v / tot * 100).toFixed(2) + '%;background:' + SC[i % SC.length] + '"></i>' }).join('') + '</div><p class="sleg">' +
       names.map(function (n, i) { return '<span><em style="background:' + SC[i % SC.length] + '"></em>' + esc(n) + ' <b>' + num(st[i] || 0) + '</b></span>' }).join('') + '</p></div>' : ''
     return header() + kpis +
-      '<section class="body"><div class="card big"><h2>إشغال الفروع <span>الحاليون مقابل الطاقة · طول الشريط = الطاقة</span></h2><div class="bars">' + bars + '</div>' +
-      keys([['ok', 'مرتفع ' + L('85%') + ' فأكثر'], ['sky', 'جيد من ' + L('70%') + ' إلى ' + L('85%')], ['warn', 'منخفض أقل من ' + L('70%')]]) + '</div>' +
+      '<section class="body b1"><div class="card big"><h2>الفروع <span>مرتبة حسب عدد الطلاب · طول شريط الإشغال = الطاقة التشغيلية</span></h2>' +
+      '<div class="mrow mh"><span class="n">الفرع</span><span class="tw">الإشغال</span><b></b><span class="tw">نسبة الانسحاب</span><b></b><small>المنسحبون</small></div>' +
+      '<div class="bars">' + rows + '</div>' +
+      keys([['ok', 'إشغال مرتفع · انسحاب جيد'], ['sky', 'إشغال جيد'], ['warn', 'إشغال منخفض · انسحاب متابعة'], ['bad', 'انسحاب مرتفع']]) + '</div>' +
       '<div class="col"><div class="card"><h2>فروع تحتاج متابعة <span>إشغال أقل من ' + L('70%') + ' أو انسحاب فوق ' + L('12%') + '</span></h2>' + wrows + '</div>' + stages + '</div></section>'
   }
 
-  /* ------------------------------------------------------------ 2 · withdrawal */
+  /* ------------------------------------------------------------ 2 · customer satisfaction and communication quality */
+  function nv(v) { return v && typeof v.num === 'number' ? v.num : null }
+  function rv(v) { return v && v.raw != null && v.raw !== '' ? L(esc(String(v.raw).replace(/\.00(?=%)/, ''))) : '<span class="no">—</span>' }
   function view2() {
-    var c = data.counts
-    if (!c) return empty('لم يُرفع سحب بعد', 'ارفع ملف «مؤشرات أعداد الطلاب» من تبويب أعداد الطلاب في المنصة.')
-    var t = c.total, w = wd(t.withdrawalRate), B = c.branches
-    var high = B.filter(function (b) { return b.withdrawalRate > LEVELS.wdFollow }).sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate })
+    var ind = data.indicators
+    if (!ind.length) return empty('لا توجد مؤشرات بعد', 'تُقرأ مؤشرات الفروع من المنصة الشاملة لكل فرع مع «حدث المؤشرات».')
+    var name = function (d) { return BRANCH[d.branch] || d.branch }
+    var sat = ind.filter(function (d) { return d.indicator === 'satisfaction' })
+    var com = ind.filter(function (d) { return d.indicator === 'communication' })
+    var withPrior = sat.filter(function (d) { return nv(d.prior) !== null })
+    var noPrior = sat.filter(function (d) { return nv(d.prior) === null }).map(name)
+    var s1 = sat.filter(function (d) { return nv(d.s1Result) !== null })
+    var targets = withPrior.map(function (d) { return nv(d.annualTarget) }).filter(function (x) { return x !== null && x > 0 })
+    var below = withPrior.filter(function (d) { var a = nv(d.annualTarget); return a !== null && a > 0 && a < nv(d.prior) })
     var kpis = '<section class="kpis">' +
-      '<div class="k hero"><span>المنسحبون</span><b>' + num(t.withdrawn) + '</b><small>من ' + num(t.current + t.withdrawn) + ' طالبًا (الحاليون + المنسحبون)</small></div>' +
-      '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '<i class="chip ' + w[0] + '">' + w[1] + '</i></b><small>جيد حتى ' + L('8%') + ' · متابعة حتى ' + L('12%') + ' · مرتفع فوقها</small></div>' +
-      (t.transferred != null ? '<div class="k"><span>محوّلون إلى فرع آخر</span><b>' + num(t.transferred) + '</b><small>انتقلوا داخل الشركة، فلا يُحتسبون منسحبين</small></div>' : '') +
-      '<div class="k"><span>فروع انسحابها مرتفع</span><b>' + high.length + '<i class="chip bad">فوق ' + L('12%') + '</i></b><small>' + (high.length ? high.map(function (b) { return esc(short(b.name)) }).join('، ') : 'لا يوجد') + '</small></div></section>'
-    var maxW = max(B.map(function (b) { return b.withdrawalRate })) || 1e-9, maxN = max(B.map(function (b) { return b.withdrawn })) || 1
-    var rate = B.slice().sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate }).map(function (b) {
-      return '<div class="br w"><span class="n">' + esc(short(b.name)) + '</span><span class="tw"><span class="tr" style="display:block"><i class="' + wd(b.withdrawalRate)[0] + '" style="width:' + (b.withdrawalRate / maxW * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.withdrawalRate) + '</b><small>' + num(b.withdrawn) + '</small></div>'
+      '<div class="k hero"><span>فروع لها نتيجة العام السابق</span><b>' + withPrior.length + of(sat.length) + '</b><small>' + (noPrior.length ? 'بلا نتيجة للعام السابق: ' + esc(noPrior.join('، ')) : 'كل الفروع لها نتيجة') + '</small></div>' +
+      '<div class="k"><span>نتائج الفصل الأول (رضا العملاء)</span>' + (s1.length ? '<b>' + s1.length + of(sat.length) + '</b><small>تظهر في عمود «الفصل الأول»</small>' : '<b class="soft">لم تُدخل بعد</b><small>تظهر هنا تلقائيًا عند إدخالها في ملفات الفروع</small>') + '</div>' +
+      '<div class="k"><span>مستهدف الرضا لهذا العام</span>' + (targets.length ? '<b class="mid">' + L(Math.min.apply(null, targets).toFixed(1).replace(/\.0$/, '') + '%') + ' – ' + L(Math.max.apply(null, targets).toFixed(1).replace(/\.0$/, '') + '%') + '</b><small>أدنى وأعلى مستهدف سنوي بين الفروع</small>' : '<b class="soft">—</b>') + '</div>' +
+      '<div class="k"><span>مستهدف أقل من نتيجة العام السابق</span><b>' + below.length + '</b><small>' + (below.length ? esc(below.map(name).join('، ')) : 'لا يوجد') + '</small></div></section>'
+    var rows = withPrior.slice().sort(function (a, b) { return nv(b.prior) - nv(a.prior) }).map(function (d) {
+      var a = nv(d.annualTarget), r1 = nv(d.s1Result), t1 = nv(d.s1Target)
+      var mark = a !== null && a > 0 ? '<em style="right:' + Math.min(a, 100).toFixed(1) + '%"></em>' : ''
+      var s1cell = r1 === null ? '<span class="no">—</span>' : '<span class="' + (t1 !== null && r1 >= t1 ? 'yes' : 'warnt') + '">' + rv(d.s1Result) + '</span>'
+      return '<div class="irow"><span class="n">' + esc(name(d)) + '</span><span class="tw"><span class="ibar"><i style="width:' + Math.min(nv(d.prior), 100).toFixed(1) + '%"></i>' + mark + '</span></span>' +
+        '<b>' + rv(d.prior) + '</b><span class="m">' + rv(d.annualTarget) + '</span><span class="m">' + s1cell + '</span></div>'
     }).join('')
-    var cnt = B.slice().sort(function (a, b) { return b.withdrawn - a.withdrawn }).map(function (b) {
-      return '<div class="br w"><span class="n">' + esc(short(b.name)) + '</span><span class="tw"><span class="tr" style="display:block"><i class="sky" style="width:' + (b.withdrawn / maxN * 100).toFixed(1) + '%"></i></span></span><b>' + num(b.withdrawn) + '</b><small>' + pct(b.withdrawalRate) + '</small></div>'
-    }).join('')
+    // communication quality: the most common pair of (last year, this year's target) is summarised, the rest listed
+    var pairKey = function (d) { return (d.prior ? d.prior.raw : '—') + '|' + (d.annualTarget ? d.annualTarget.raw : '—') }
+    var counts = {}
+    com.forEach(function (d) { var k = pairKey(d); counts[k] = (counts[k] || 0) + 1 })
+    var common = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] })[0]
+    var others = com.filter(function (d) { return pairKey(d) !== common })
+    var sample = com.filter(function (d) { return pairKey(d) === common })[0]
+    var scaleNote = com.some(function (d) { return d.prior && d.prior.unit === '' && d.annualTarget && d.annualTarget.unit === '%' })
+    var crows = others.map(function (d) { return '<div class="crow"><span class="n">' + esc(name(d)) + '</span><span>' + rv(d.prior) + '</span><span>' + rv(d.annualTarget) + '</span></div>' }).join('')
+    var issues = []
+    com.forEach(function (d) { if (d.prior && d.prior.unit === '%' && nv(d.prior) > 100) issues.push([name(d), 'نتيجة جودة التواصل للعام السابق مكتوبة ' + rv(d.prior)]) })
+    ind.forEach(function (d) { if (d.annualTarget && nv(d.annualTarget) === 0) issues.push([name(d), 'المستهدف السنوي لـ' + esc(d.title || '') + ' ' + rv(d.annualTarget)]) })
+    var comCard = '<div class="card"><h2>معامل جودة التواصل <span>كما في ملف كل فرع</span></h2>' +
+      (scaleNote ? '<p class="note top">نتيجة العام السابق مسجّلة بمقياس من 3 (مثل ' + L('3.00') + ')، ومستهدف هذا العام نسبة مئوية، فلا يُقارنان مباشرة. نتائج هذا العام تظهر عند إدخالها.</p>' : '') +
+      (sample ? '<p class="common"><b>' + counts[common] + ' فرعًا</b> العام السابق ' + rv(sample.prior) + ' · مستهدف العام ' + rv(sample.annualTarget) + '</p>' : '') +
+      (others.length ? '<div class="crow ch"><span class="n">بقية الفروع</span><span>العام السابق</span><span>مستهدف العام</span></div>' + crows : '') + '</div>'
+    var issueCard = issues.length ? '<div class="card"><h2>ملاحظات على الملفات</h2><ul class="list miss">' + issues.map(function (x) { return '<li><div class="nm"><b>' + esc(x[0]) + '</b><span>' + x[1] + '</span></div></li>' }).join('') + '</ul></div>' : ''
     return header() + kpis +
-      '<section class="body eq"><div class="card"><h2>نسبة الانسحاب لكل فرع <span>العدد بجانبها</span></h2><div class="bars">' + rate + '</div>' +
-      keys([['ok', 'جيد حتى ' + L('8%')], ['warn', 'متابعة حتى ' + L('12%')], ['bad', 'مرتفع فوق ' + L('12%')]]) + '</div>' +
-      '<div class="card"><h2>عدد المنسحبين لكل فرع <span>النسبة بجانبه</span></h2><div class="bars">' + cnt + '</div><p class="note">الفرع الكبير قد يكثر منسحبوه وتبقى نسبته منخفضة، فالعرضان معًا يكملان الصورة.</p></div></section>'
+      '<section class="body b2"><div class="card big"><h2>معامل رضا العملاء <span>الشريط = نتيجة العام السابق · العلامة الذهبية = مستهدف هذا العام</span></h2>' +
+      '<div class="irow ih"><span class="n">الفرع</span><span class="tw"></span><b>العام السابق</b><span class="m">مستهدف العام</span><span class="m">الفصل الأول</span></div>' +
+      '<div class="bars">' + rows + '</div></div>' +
+      '<div class="col">' + comCard + issueCard + '</div></section>'
   }
 
   /* ------------------------------------------------------------ 3 · CSR (branch plans) */
@@ -345,67 +402,114 @@
       '<div class="card"><h2>المشاريع حسب المسار</h2><div class="tb">' + tbars + '</div></div></div></section>'
   }
 
-  /* ------------------------------------------------------------ 4 · social media in brief */
+  /* ------------------------------------------------------------ social readings shared by views 4 and 5 */
   function months() {
     var seen = {}
     data.readings.forEach(function (r) { if (r.month) seen[r.month] = 1 })
     return Object.keys(seen).sort()
   }
   function latestMonth() { var m = months(); return m[m.length - 1] || null }
-  function view4() {
-    var ms = months(), cur = ms[ms.length - 1], prev = ms[ms.length - 2]
-    if (!cur) return empty('لا توجد قراءات بعد', 'تُسجَّل أعداد المتابعين شهريًا في تبويب التواصل الاجتماعي.')
+  /** followers this month and last month for the accounts that pass `keep` */
+  function socialMonth(keep) {
+    var ms = months(), cur = ms[ms.length - 1] || null, prev = ms[ms.length - 2] || null
     var A = {}
-    data.accounts.forEach(function (a) { A[a.id] = a })
+    data.accounts.forEach(function (a) { if (keep(a)) A[a.id] = a })
     var now = {}, before = {}
     data.readings.forEach(function (r) { if (!A[r.account]) return; if (r.month === cur) now[r.account] = r.followers; else if (r.month === prev) before[r.account] = r.followers })
-    var ids = Object.keys(now)
-    var total = ids.reduce(function (s, a) { return s + now[a] }, 0)
-    var both = ids.filter(function (a) { return before[a] != null })
-    var delta = both.reduce(function (s, a) { return s + now[a] - before[a] }, 0)
-    var plat = {}, count = {}
-    ids.forEach(function (a) { var p = A[a].platform; plat[p] = (plat[p] || 0) + now[a]; count[p] = (count[p] || 0) + 1 })
-    var order = Object.keys(plat).sort(function (a, b) { return plat[b] - plat[a] })
-    var big = order[0]
-    var maxP = plat[big] || 1
-    var unit = function (p, n) { return p === 'whatsapp' ? n + (n > 2 && n < 11 ? ' قنوات' : ' قناة') : n + (n > 2 && n < 11 ? ' حسابات' : ' حساب') }
-    var pbars = order.map(function (p) {
-      return '<div class="brp">' + logo(p) + '<span class="n">' + esc(PLATFORM[p] || p) + '<small>' + unit(p, count[p]) + '</small></span><span class="tw"><span class="tr" style="display:block"><i style="background:#d8b14b;width:' + (plat[p] / maxP * 100).toFixed(1) + '%"></i></span></span><b>' + num(plat[p]) + '</b></div>'
+    return { cur: cur, prev: prev, A: A, now: now, before: before, ids: Object.keys(A) }
+  }
+  function monthWord(ym) { return fmtMonth(ym).split(' ')[0] }
+
+  /* ------------------------------------------------------------ 4 · social media by school */
+  var SCHOOLS = [
+    ['ahlia', 'الأهلية', 'مدارس الأندلس الأهلية'],
+    ['alamia', 'العالمية', 'مدارس الأندلس العالمية'],
+    ['little', 'الأندلس الصغيرة', 'الأندلس الصغيرة العالمية'],
+    ['company', 'الشركة', 'شركة الأندلس التعليمية'],
+  ]
+  function schoolOf(a) {
+    var n = String(a.name || '')
+    for (var i = 0; i < SCHOOLS.length; i++) if (n === SCHOOLS[i][2]) return SCHOOLS[i][0]
+    if (n.indexOf('الصغيرة') >= 0) return 'little'
+    if (n.indexOf('شركة') >= 0) return 'company'
+    if (n.indexOf('العالمية') >= 0) return 'alamia'
+    if (n.indexOf('الأهلية') >= 0) return 'ahlia'
+    return null
+  }
+  function view4() {
+    var s = socialMonth(function (a) { return a.platform !== 'whatsapp' })
+    if (!s.cur) return empty('لا توجد قراءات بعد', 'تُسجَّل أعداد المتابعين شهريًا في تبويب التواصل الاجتماعي.')
+    var grand = 0, biggest = null, unknown = 0
+    var cards = SCHOOLS.map(function (sc) {
+      var ids = s.ids.filter(function (a) { return schoolOf(s.A[a]) === sc[0] })
+      ids.sort(function (a, b) { return (s.now[b] || 0) - (s.now[a] || 0) })
+      var total = ids.reduce(function (t, a) { return t + (s.now[a] || 0) }, 0)
+      grand += total
+      ids.forEach(function (a) { if (s.now[a] != null && (!biggest || s.now[a] > s.now[biggest])) biggest = a })
+      var both = ids.filter(function (a) { return s.now[a] != null && s.before[a] != null })
+      var dl = both.reduce(function (t, a) { return t + s.now[a] - s.before[a] }, 0)
+      var mx = max(ids.map(function (a) { return s.now[a] || 0 })) || 1
+      var change = both.length && s.prev
+        ? '<span class="' + (dl >= 0 ? 'pos' : 'neg') + '">' + L((dl >= 0 ? '+' : '−') + num(Math.abs(dl))) + '</span> عن ' + esc(monthWord(s.prev)) + ' (' + both.length + (both.length > 2 && both.length < 11 ? ' حسابات' : ' حساب') + ')'
+        : 'أول قراءة في ' + esc(monthWord(s.cur))
+      var rows = ids.map(function (a) {
+        var v = s.now[a]
+        return '<div class="prow">' + logo(s.A[a].platform) + '<span class="tw"><span class="tr"><i style="background:#d8b14b;width:' + ((v || 0) / mx * 100).toFixed(1) + '%"></i></span></span><b>' + (v != null ? num(v) : '<span class="no">—</span>') + '</b></div>'
+      }).join('')
+      return '<div class="card sc"><div class="bhd"><img src="../brands/' + sc[0] + '.webp" alt=""><div><b>' + sc[1] + '</b><span>' + esc(sc[2]) + ' · ' + ids.length + (ids.length > 2 && ids.length < 11 ? ' حسابات' : ' حساب') + '</span></div></div>' +
+        '<div class="btot">' + num(total) + '</div><p class="bchg">' + change + '</p><div class="plist">' + rows + '</div><p class="bshare" data-total="' + total + '"></p></div>'
     }).join('')
-    var top = ids.slice().sort(function (a, b) { return now[b] - now[a] }).slice(0, 6).map(function (a) {
-      return '<li>' + logo(A[a].platform) + '<div class="nm"><b>' + esc(A[a].name) + '</b><span>' + esc(PLATFORM[A[a].platform] || A[a].platform) + '</span></div><span class="v">' + num(now[a]) + '</span></li>'
-    }).join('')
-    var grow = both.map(function (a) { return [now[a] - before[a], a] }).filter(function (x) { return x[0] > 0 }).sort(function (a, b) { return b[0] - a[0] }).slice(0, 5)
-    var growList = grow.length ? '<ul class="list">' + grow.map(function (g) {
-      var a = g[1]
-      return '<li>' + logo(A[a].platform) + '<div class="nm"><b>' + esc(A[a].name) + '</b><span>' + esc(PLATFORM[A[a].platform] || A[a].platform) + ' · ' + L(num(before[a]) + ' → ' + num(now[a])) + '</span></div><span class="v pos">' + L('+' + num(g[0])) + '</span></li>'
-    }).join('') + '</ul>' : '<p class="none" style="color:var(--mut)">' + (prev ? 'لا زيادة مسجّلة عن ' + esc(fmtMonth(prev)) : 'تظهر بعد تسجيل شهرين') + '</p>'
-    var wa = count.whatsapp || 0
+    s.ids.forEach(function (a) { if (!schoolOf(s.A[a])) unknown++ })
+    cards = cards.replace(/<p class="bshare" data-total="(\d+)"><\/p>/g, function (m, t) { return '<p class="bshare">' + (grand ? pct(+t / grand) + ' من إجمالي المتابعين' : '') + '</p>' })
+    var kpis = '<section class="kpis slim">' +
+      '<div class="k hero row"><span>إجمالي متابعي حسابات المدارس والشركة</span><b>' + num(grand) + '</b></div>' +
+      (biggest ? '<div class="k row"><span>أكبر حساب</span><b>' + logo(s.A[biggest].platform) + '<span class="bv">' + num(s.now[biggest]) + '</span></b><small>' + esc(PLATFORM[s.A[biggest].platform] || '') + ' ' + esc((SCHOOLS.filter(function (x) { return x[0] === schoolOf(s.A[biggest]) })[0] || ['', ''])[1]) + '</small></div>' : '') +
+      '</section>'
+    return header() + kpis + '<section class="body b4">' + cards + '</section>' + (unknown ? '<p class="foot-note">' + unknown + ' حساب لا يتبع مدرسة معروفة ولم يُحتسب.</p>' : '')
+  }
+
+  /* ------------------------------------------------------------ 5 · WhatsApp channels */
+  function view5() {
+    var s = socialMonth(function (a) { return a.platform === 'whatsapp' })
+    var ids = s.ids.filter(function (a) { return s.now[a] != null })
+    if (!s.cur || !ids.length) return empty('لا توجد قراءات للقنوات بعد', 'تُسجَّل أعداد المشتركين شهريًا في صفحة قنوات الواتساب.')
+    ids.sort(function (a, b) { return s.now[b] - s.now[a] })
+    var total = ids.reduce(function (t, a) { return t + s.now[a] }, 0)
+    var both = ids.filter(function (a) { return s.before[a] != null })
+    var dl = both.reduce(function (t, a) { return t + s.now[a] - s.before[a] }, 0)
+    var up = both.filter(function (a) { return s.now[a] > s.before[a] }).length, down = both.filter(function (a) { return s.now[a] < s.before[a] }).length
+    var company = ids.filter(function (a) { return s.A[a].owner === 'company' }).length
+    var mx = s.now[ids[0]] || 1
+    var row = function (a) {
+      var d = s.before[a] != null ? s.now[a] - s.before[a] : null
+      var chip = d === null ? '<span class="dlt no">جديدة</span>' : '<span class="dlt ' + (d > 0 ? 'up' : d < 0 ? 'dn' : 'no') + '">' + L((d > 0 ? '+' : d < 0 ? '−' : '') + num(Math.abs(d))) + '</span>'
+      return '<div class="wrow"><span class="n">' + esc(s.A[a].name) + '</span><span class="tw"><span class="tr"><i style="background:#25D366;width:' + (s.now[a] / mx * 100).toFixed(1) + '%"></i></span></span><b>' + num(s.now[a]) + '</b>' + chip + '</div>'
+    }
+    var half = Math.ceil(ids.length / 2)
     var kpis = '<section class="kpis">' +
-      '<div class="k hero"><span>إجمالي المتابعين</span><b>' + num(total) + '</b><small>على ' + ids.length + ' حسابًا وقناة · ' + esc(fmtMonth(cur)) + '</small></div>' +
-      (prev ? '<div class="k"><span>الزيادة عن ' + esc(fmtMonth(prev).split(' ')[0]) + '</span><b class="' + (delta >= 0 ? 'pos' : 'neg') + '">' + L((delta >= 0 ? '+' : '−') + num(Math.abs(delta))) + '</b><small>على ' + both.length + ' حسابًا لها قراءة في الشهرين فقط</small></div>' : '') +
-      '<div class="k"><span>أكبر منصة</span><b>' + logo(big) + '<span class="bv">' + num(plat[big]) + '</span></b><small>' + esc(PLATFORM[big] || big) + ' · ' + unit(big, count[big]) + '</small></div>' +
-      (wa ? '<div class="k"><span>قنوات واتساب الفروع</span><b>' + wa + '</b><small>' + num(plat.whatsapp) + ' مشتركًا</small></div>' : '') + '</section>'
+      '<div class="k hero"><span>إجمالي المشتركين</span><b>' + num(total) + '</b><small>' + ids.length + ' قناة' + (company ? ': ' + (ids.length - company) + ' للفروع و' + (company === 1 ? 'قناة' : company + ' قنوات') + ' للشركة' : '') + ' · ' + esc(fmtMonth(s.cur)) + '</small></div>' +
+      (s.prev && both.length ? '<div class="k"><span>الفرق عن ' + esc(monthWord(s.prev)) + '</span><b class="' + (dl >= 0 ? 'pos' : 'neg') + '">' + L((dl >= 0 ? '+' : '−') + num(Math.abs(dl))) + '</b><small>على ' + both.length + ' قناة لها قراءة في الشهرين</small></div>' +
+        '<div class="k"><span>قنوات زادت / تراجعت</span><b><span class="pos">' + up + '</span><span class="sep">/</span><span class="neg">' + down + '</span></b><small>مقارنة بقراءة ' + esc(monthWord(s.prev)) + '</small></div>' : '') +
+      '<div class="k"><span>أكبر قناة</span><b>' + num(s.now[ids[0]]) + '</b><small>' + esc(s.A[ids[0]].name) + '</small></div></section>'
     return header() + kpis +
-      '<section class="body b4"><div class="card"><h2>المتابعون حسب المنصة</h2><div class="bars">' + pbars + '</div></div>' +
-      '<div class="card"><h2>أكبر الحسابات</h2><ul class="list">' + top + '</ul></div>' +
-      '<div class="card"><h2>الأكثر نموًا هذا الشهر' + (prev ? ' <span>عن ' + esc(fmtMonth(prev).split(' ')[0]) + '</span>' : '') + '</h2>' + growList + '</div></section>'
+      '<section class="body eq"><div class="card"><h2>القنوات <span>المشتركون · الفرق عن ' + esc(s.prev ? monthWord(s.prev) : 'الشهر السابق') + '</span></h2><div class="bars">' + ids.slice(0, half).map(row).join('') + '</div></div>' +
+      '<div class="card"><h2>&nbsp;</h2><div class="bars">' + ids.slice(half).map(row).join('') + '</div></div></section>'
   }
 
   /* ------------------------------------------------------------ render and control */
   function footer() {
     var st = online ? 'آخر تحديث ' + timeFmt.format(lastOk || new Date()) : 'غير متصل · آخر تحديث ' + (lastOk ? timeFmt.format(lastOk) : '—')
-    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
+    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
       '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>' +
       (EMBED ? '' : '<div class="menu" id="menu"><button type="button" id="m-full">ملء الشاشة</button><button type="button" id="m-out">تسجيل الخروج</button></div>')
   }
   function render() {
-    var body = view === 1 ? view1() : view === 2 ? view2() : view === 3 ? view3() : view4()
+    var body = [view1, view2, view3, view4, view5][view - 1]()
     app.innerHTML = body + footer()
     if (!EMBED) bindMenu()
   }
   function setView(v) {
-    v = ((v - 1 + 4) % 4) + 1
+    v = ((v - 1 + N) % N) + 1
     if (v === view && app.querySelector('.hd')) return
     view = v
     try { localStorage.setItem(VIEW_STORE, String(v)) } catch (e) { /* no storage */ }
@@ -430,7 +534,7 @@
   async function poll() {
     try {
       var changed = await load()
-      if (!data.counts && !data.plans.length && !(await allowed())) { saveSession(null); showLogin('هذا الحساب موقوف أو لم يعد حساب شاشة.'); return }
+      if (!data.counts && !data.plans.length && !data.indicators.length && !(await allowed())) { saveSession(null); showLogin('هذا الحساب موقوف أو لم يعد حساب شاشة.'); return }
       if (changed) render()
       else { var s = document.getElementById('state'); if (s) { s.className = 'state'; s.textContent = 'آخر تحديث ' + timeFmt.format(lastOk) } }
     } catch (e) {
@@ -442,13 +546,13 @@
   }
 
   /* keys: 1-4 pick a view, arrows step through them (left = next, as the views run right to left), OK opens the menu */
-  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 97: 1, 98: 2, 99: 3, 100: 4 }
+  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5 }
   document.addEventListener('keydown', function (e) {
     if (!started) return
     var tag = (e.target && e.target.tagName) || ''
     var menuOpen = !!document.querySelector('.menu.on')
     var k = e.key, code = e.keyCode
-    var n = /^[1-4]$/.test(k) ? +k : KEYS[code]
+    var n = /^[1-5]$/.test(k) ? +k : KEYS[code]
     if (n) { e.preventDefault(); hideMenu(); setView(n); return }
     if (!menuOpen && (k === 'ArrowLeft' || code === 37)) { e.preventDefault(); setView(view + 1); return }
     if (!menuOpen && (k === 'ArrowRight' || code === 39)) { e.preventDefault(); setView(view - 1); return }
@@ -465,7 +569,7 @@
   function bindMenu() {
     var full = document.getElementById('m-full'), out = document.getElementById('m-out')
     full.onclick = function () { var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; if (f) f.call(el); hideMenu() }
-    out.onclick = function () { if (window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); data = { counts: null, plans: [], accounts: [], readings: [] }; showLogin() } }
+    out.onclick = function () { if (window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); data = EMPTY_DATA(); showLogin() } }
   }
   function showMenu() {
     var m = document.getElementById('menu')

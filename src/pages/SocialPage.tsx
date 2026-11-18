@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, TrendingUp } from "lucide-react"
 import { useStore } from "@/data/store"
+import { useRouter } from "@/lib/router"
 import type { SocialAccount } from "@/data/types"
 import { publicBranches, accountMonth, currentMonth, groupByName, history, indexReadings, isWhatsApp, monthLabel, ownerLabel, platformOf, recordedMonths, shiftMonth, type Index } from "@/data/social"
 import { formatDate, formatNumber } from "@/lib/format"
@@ -38,7 +39,9 @@ export function MonthStepper({ month, onChange, max }: { month: string; onChange
 
 type Editing = { kind: "account"; item?: SocialAccount } | { kind: "readings" } | null
 
-export function SocialPage() {
+export function SocialPage({ mode = "accounts" }: { mode?: "accounts" | "whatsapp" }) {
+  const { go } = useRouter()
+  const wa = mode === "whatsapp"
   const { data, canEdit } = useStore()
   const latest = defaultSocialMonth(data.socialReadings)
   const maxMonth = latest > currentMonth() ? latest : currentMonth()
@@ -46,23 +49,24 @@ export function SocialPage() {
   const [editing, setEditing] = useState<Editing>(null)
   const idx = useMemo(() => indexReadings(data.socialReadings), [data.socialReadings])
 
-  const accounts = data.socialAccounts.filter((a) => a.active || canEdit)
-  const shown = accounts
+  const all = data.socialAccounts.filter((a) => a.active || canEdit)
+  // two pages: the schools' and company's accounts, and the WhatsApp channels
+  const shown = all.filter((a) => (wa ? isWhatsApp(a) : !isWhatsApp(a)))
+  const accounts = shown
+  const waCount = all.filter(isWhatsApp).length
   const rows = shown.map((a) => ({ a, m: accountMonth(idx, a.id, month) }))
   const recorded = rows.filter((r) => r.m.followers !== null).length
   const grew = rows.filter((r) => (r.m.growth ?? 0) > 0).length
   const fell = rows.filter((r) => (r.m.growth ?? 0) < 0).length
   const top = rows.filter((r) => r.m.growth !== null && r.m.growth > 0).sort((x, y) => y.m.growth! - x.m.growth!)[0]
-  const social = rows.filter((r) => !isWhatsApp(r.a))
-  const whats = rows.filter((r) => isWhatsApp(r.a))
   const lastRecorded = data.socialReadings.reduce<string | null>((m, r) => (!m || r.recordedAt > m ? r.recordedAt : m), null)
 
   return (
     <>
       <PageHeader
         eyebrow="التواصل الاجتماعي"
-        title="حسابات التواصل وقنوات واتساب"
-        description="عدد المتابعين لكل حساب كما سجّله المحرر لكل شهر، والنمو هو الفرق عن الشهر السابق بالعدد."
+        title={wa ? "قنوات الواتساب" : "حسابات التواصل الاجتماعي"}
+        description={wa ? "عدد المشتركين في كل قناة واتساب للفروع والشركة كما سجّله المحرر لكل شهر، والنمو هو الفرق عن الشهر السابق." : "عدد المتابعين لكل حساب من حسابات المدارس والشركة كما سجّله المحرر لكل شهر، والنمو هو الفرق عن الشهر السابق بالعدد."}
         actions={
           canEdit ? (
             <>
@@ -78,10 +82,25 @@ export function SocialPage() {
           ) : undefined
         }
       />
+      <div role="tablist" aria-label="أقسام التواصل الاجتماعي" className="mb-5 inline-flex rounded-full border bg-card p-1">
+        {([["accounts", "حسابات التواصل", all.length - waCount], ["whatsapp", "قنوات الواتساب", waCount]] as const).map(([k, label, n]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={mode === k}
+            onClick={() => go({ page: k === "whatsapp" ? "whatsapp" : "social" })}
+            className={cn("inline-flex h-10 items-center gap-2 rounded-full px-4 text-[15px] transition-colors", mode === k ? "bg-primary font-bold text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
+          >
+            {label}
+            <span className={cn("num rounded-full px-1.5 text-[12px]", mode === k ? "bg-white/20" : "bg-muted")}>{formatNumber(n)}</span>
+          </button>
+        ))}
+      </div>
       <Gate
         needs={["socialAccounts", "socialReadings", "settings"]}
         emptyWhen={accounts.length === 0}
-        emptyTitle="لم تُضف حسابات بعد"
+        emptyTitle={wa ? "لم تُضف قنوات واتساب بعد" : "لم تُضف حسابات بعد"}
         emptyBody={
           canEdit ? (
             <span>
@@ -98,7 +117,11 @@ export function SocialPage() {
         </div>
 
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <MiniStat label="الحسابات والقنوات" value={formatNumber(shown.length)} sub={`${formatNumber(social.length)} حسابًا · ${formatNumber(whats.length)} واتساب`} />
+          {wa ? (
+            <MiniStat label="القنوات" value={formatNumber(shown.length)} sub={`مجموع المشتركين ${formatNumber(rows.reduce((t, r) => t + (r.m.followers ?? 0), 0))}`} />
+          ) : (
+            <MiniStat label="الحسابات" value={formatNumber(shown.length)} sub={`مجموع المتابعين ${formatNumber(rows.reduce((t, r) => t + (r.m.followers ?? 0), 0))}`} />
+          )}
           <MiniStat label={`سُجّلت أرقامها في ${monthLabel(month, false)}`} value={formatNumber(recorded)} sub={recorded < shown.length ? `${formatNumber(shown.length - recorded)} بانتظار التسجيل` : "اكتمل التسجيل"} />
           <MiniStat tone="ok" label="نمت" value={formatNumber(grew)} sub="مقارنة بالشهر السابق" />
           <MiniStat tone="bad" label="تراجعت" value={formatNumber(fell)} sub="مقارنة بالشهر السابق" />
@@ -121,7 +144,16 @@ export function SocialPage() {
           </div>
         )}
 
-        {groupByName(rows.map((r) => ({ ...r, a: { ...r.a, name: groupOf(r.a) }, orig: r.a }))).map((g) => (
+        {wa && (
+          <section className="mt-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[22px] font-bold">القنوات</h2>
+              <span className="text-[14px] text-muted-foreground">{formatNumber(rows.length)} {rows.length > 10 ? "قناة" : rows.length > 2 ? "قنوات" : "قناة"}</span>
+            </div>
+            <ChannelBars rows={rows} month={month} onEdit={canEdit ? (a) => setEditing({ kind: "account", item: a }) : undefined} />
+          </section>
+        )}
+        {!wa && groupByName(rows.map((r) => ({ ...r, a: { ...r.a, name: groupOf(r.a) }, orig: r.a }))).map((g) => (
           <section key={g.name} className="mt-8">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-[22px] font-bold">{g.name}</h2>
