@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react"
-import { AlertTriangle, FileDown, FileSpreadsheet, Loader2, Lock, Trash2, Upload } from "lucide-react"
+import { AlertTriangle, ExternalLink, FileDown, FileSpreadsheet, Loader2, Lock, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { useStore } from "@/data/store"
 import type { StudentCounts, StudentTarget } from "@/data/types"
@@ -11,6 +11,9 @@ import { studentsPages, studentsTitle } from "@/report/students"
 import { Gate } from "@/components/Gate"
 import { Banner, PageHeader, Panel } from "@/components/common"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+
+/** «منصة الحلول»: the Expert Solutions system the student-numbers file is pulled from (طلب مدير المنصة) */
+const ERP_URL = "https://erp.as.edu.sa:9043/"
 import { BranchChip, Dashboard } from "./Dashboard"
 
 /**
@@ -77,6 +80,10 @@ export function StudentsPage() {
         description={counts ? <>آخر سحب من نظام الحلول الخبيرة: <b className="text-foreground">{formatDate(counts.date)}</b></> : "مؤشرات أعداد الطلاب لكل فرع من سحب نظام الحلول الخبيرة."}
         actions={
           <>
+            <a href={ERP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold hover:bg-accent">
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              منصة الحلول
+            </a>
             <button type="button" onClick={() => setUploading(true)} className="inline-flex h-11 items-center gap-2 rounded-full border bg-card px-4 text-[15px] font-bold text-primary hover:bg-accent">
               <Upload className="h-4 w-4" aria-hidden="true" />
               رفع ملف جديد
@@ -144,7 +151,9 @@ export function StudentsPage() {
           <SheetHeader className="pe-8 text-start">
             <SheetTitle className="text-start text-[22px] font-bold">رفع ملف أعداد الطلاب</SheetTitle>
             <SheetDescription className="text-start text-[15px]">
-              ملف «مؤشرات أعداد الطلاب» كما يخرج من التقرير. يُقرأ في متصفحك وتُحفظ الأرقام فقط، ويُعرف السحب بتاريخه المكتوب في الملف.
+              ملف «مؤشرات أعداد الطلاب» كما يخرج من التقرير في{" "}
+              <a href={ERP_URL} target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline underline-offset-2">منصة الحلول</a>
+              . يُقرأ في متصفحك وتُحفظ الأرقام فقط، ويُعرف السحب بتاريخه المكتوب في الملف.
             </SheetDescription>
           </SheetHeader>
           <UploadForm existing={list} onDone={(id) => (setUploading(false), id && (setPick(id), setBranch(null)))} />
