@@ -283,11 +283,12 @@
       var sa = (a.occupancy < LEVELS.ocGood) + (a.withdrawalRate > LEVELS.wdFollow), sb = (b.occupancy < LEVELS.ocGood) + (b.withdrawalRate > LEVELS.wdFollow)
       return sb - sa || a.occupancy - b.occupancy
     })
-    var wrows = watch.length ? '<ul class="watch">' + watch.map(function (b) {
+    var shownWatch = watch.length > 7 ? watch.slice(0, 6) : watch
+    var wrows = watch.length ? '<ul class="watch">' + shownWatch.map(function (b) {
       return '<li><span class="n">' + esc(short(b.name)) + '</span><span>' +
         (b.occupancy < LEVELS.ocGood ? '<i class="chip warn">إشغال ' + pct(b.occupancy) + '</i>' : '') +
         (b.withdrawalRate > LEVELS.wdFollow ? '<i class="chip bad">انسحاب ' + pct(b.withdrawalRate) + '</i>' : '') + '</span></li>'
-    }).join('') + '</ul>' : '<p class="none">كل الفروع ضمن الحدود المعتمدة</p>'
+    }).join('') + (watch.length > shownWatch.length ? '<li class="more">و' + (watch.length - shownWatch.length) + ' فروع أخرى في تبويب أعداد الطلاب</li>' : '') + '</ul>' : '<p class="none">كل الفروع ضمن الحدود المعتمدة</p>'
     var SC = ['#d8b14b', '#33bdf2', '#8f8fe6', '#4fcf8e', '#c084fc', '#ef6a5c']
     var st = t.stages || [], names = c.stageNames || [], tot = st.reduce(function (a, b) { return a + b }, 0) || 1
     var stages = names.length && st.length ? '<div class="card"><h2>حسب المرحلة <span>الطلاب الحاليون</span></h2><div class="stack">' +
@@ -335,15 +336,19 @@
     var others = com.filter(function (d) { return pairKey(d) !== common })
     var sample = com.filter(function (d) { return pairKey(d) === common })[0]
     var scaleNote = com.some(function (d) { return d.prior && d.prior.unit === '' && d.annualTarget && d.annualTarget.unit === '%' })
-    var crows = others.map(function (d) { return '<div class="crow"><span class="n">' + esc(name(d)) + '</span><span>' + rv(d.prior) + '</span><span>' + rv(d.annualTarget) + '</span></div>' }).join('')
+    var shownOthers = others.length > 7 ? others.slice(0, 6) : others
+    var crows = shownOthers.map(function (d) { return '<div class="crow"><span class="n">' + esc(name(d)) + '</span><span>' + rv(d.prior) + '</span><span>' + rv(d.annualTarget) + '</span></div>' }).join('') +
+      (others.length > shownOthers.length ? '<div class="crow more">و' + (others.length - shownOthers.length) + ' فروع أخرى</div>' : '')
     var issues = []
     com.forEach(function (d) { if (d.prior && d.prior.unit === '%' && nv(d.prior) > 100) issues.push([name(d), 'نتيجة جودة التواصل للعام السابق مكتوبة ' + rv(d.prior)]) })
     ind.forEach(function (d) { if (d.annualTarget && nv(d.annualTarget) === 0) issues.push([name(d), 'المستهدف السنوي لـ' + esc(d.title || '') + ' ' + rv(d.annualTarget)]) })
     var comCard = '<div class="card"><h2>معامل جودة التواصل <span>كما في ملف كل فرع</span></h2>' +
-      (scaleNote ? '<p class="note top">نتيجة العام السابق مسجّلة بمقياس من 3 (مثل ' + L('3.00') + ')، ومستهدف هذا العام نسبة مئوية، فلا يُقارنان مباشرة. نتائج هذا العام تظهر عند إدخالها.</p>' : '') +
+      (scaleNote ? '<p class="note top one">نتيجة العام السابق بمقياس من 3، ومستهدف هذا العام نسبة مئوية، فلا يُقارنان.</p>' : '') +
       (sample ? '<p class="common"><b>' + counts[common] + ' فرعًا</b> العام السابق ' + rv(sample.prior) + ' · مستهدف العام ' + rv(sample.annualTarget) + '</p>' : '') +
       (others.length ? '<div class="crow ch"><span class="n">بقية الفروع</span><span>العام السابق</span><span>مستهدف العام</span></div>' + crows : '') + '</div>'
-    var issueCard = issues.length ? '<div class="card"><h2>ملاحظات على الملفات</h2><ul class="list miss">' + issues.map(function (x) { return '<li><div class="nm"><b>' + esc(x[0]) + '</b><span>' + x[1] + '</span></div></li>' }).join('') + '</ul></div>' : ''
+    var shownIssues = issues.length > 3 ? issues.slice(0, 2) : issues
+    var issueCard = issues.length ? '<div class="card"><h2>ملاحظات على الملفات</h2><ul class="issues">' + shownIssues.map(function (x) { return '<li><b>' + esc(x[0]) + ':</b> ' + x[1] + '</li>' }).join('') +
+      (issues.length > shownIssues.length ? '<li class="more">و' + (issues.length - shownIssues.length) + ' ملاحظات أخرى</li>' : '') + '</ul></div>' : ''
     return header() + kpis +
       '<section class="body b2"><div class="card big"><h2>معامل رضا العملاء <span>الشريط = نتيجة العام السابق · العلامة الذهبية = مستهدف هذا العام</span></h2>' +
       '<div class="irow ih"><span class="n">الفرع</span><span class="tw"></span><b>العام السابق</b><span class="m">مستهدف العام</span><span class="m">الفصل الأول</span></div>' +
@@ -390,7 +395,9 @@
     noProjects.forEach(function (n) { follow.push([n, 'الخطة موجودة بلا مشاريع مكتوبة']) })
     missing.forEach(function (m) { follow.push([m[0], 'لا يوجد مشروع في ' + m[1]]) })
     if (noneApproved) follow.push([noneApproved + (noneApproved > 10 ? ' فرعًا' : ' فروع'), 'لم يُعتمد أي مشروع من خطتها بعد'])
-    var flist = follow.length ? '<ul class="list miss">' + follow.map(function (f) { return '<li><div class="nm"><b>' + esc(f[0]) + '</b><span>' + esc(f[1]) + '</span></div></li>' }).join('') + '</ul>' : '<p class="none">لا ملاحظات على الخطط</p>'
+    var shownFollow = follow.length > 5 ? follow.slice(0, 4) : follow
+    var flist = follow.length ? '<ul class="list miss">' + shownFollow.map(function (f) { return '<li><div class="nm"><b>' + esc(f[0]) + '</b><span>' + esc(f[1]) + '</span></div></li>' }).join('') +
+      (follow.length > shownFollow.length ? '<li class="more">و' + (follow.length - shownFollow.length) + ' ملاحظات أخرى في تبويب خطط الفروع</li>' : '') + '</ul>' : '<p class="none">لا ملاحظات على الخطط</p>'
     var tracks = [['المسار التعليمي', edu, '#33bdf2'], ['المسار التربوي القيمي', val, '#d8b14b']]
     if (other) tracks.push(['مشاريع إضافية', other, '#8f8fe6'])
     var maxT = max(tracks.map(function (x) { return x[1] })) || 1

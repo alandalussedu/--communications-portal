@@ -90,9 +90,9 @@ function Delta({ now, before, kind, prevDate, invert }: { now: number | null; be
 
 function KpiHead({ icon, label, light }: { icon: ReactNode; label: string; light?: boolean }) {
   return (
-    <header className={cn("flex items-center gap-2 whitespace-nowrap text-[14px] font-bold", light ? "text-band-soft" : "text-muted-foreground")}>
+    <header className={cn("flex min-w-0 items-center gap-2 whitespace-nowrap text-[14px] font-bold", light ? "text-band-soft" : "text-muted-foreground")}>
       <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[10px]", light ? "bg-white/10 text-gold" : "bg-muted text-primary")}>{icon}</span>
-      {label}
+      <span className="min-w-0 truncate">{label}</span>
     </header>
   )
 }
@@ -115,7 +115,7 @@ function Kpis({ row, prev, prevDate, preliminary, branchNotes, target }: { row: 
           </div>
         </div>
       )}
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-[1.25fr_repeat(6,minmax(0,1fr))]">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         <li className="col-span-2 min-w-0 rounded-2xl p-5 text-band-foreground md:col-span-1" style={{ background: "linear-gradient(160deg, hsl(var(--band)), hsl(240 60% 20%))" }}>
           <KpiHead icon={<Users className="h-4 w-4" aria-hidden="true" />} label="الطلاب الحاليون" light />
           <p className="num mt-3 text-[34px] font-extrabold leading-none">{formatNumber(row.current)}</p>
@@ -174,10 +174,10 @@ function TargetCard({ target, counts, year, onEdit }: { target: StudentTarget | 
   const t = targetSummary(target, counts)
   const share = t.total > 0 ? t.current / t.total : 0
   return (
-    <li className={cn("col-span-2 min-w-0 rounded-2xl p-5 md:col-span-1 xl:col-span-2 2xl:col-span-1", t.total ? "border border-gold/60 bg-gold-soft" : "border-2 border-dashed border-gold/60 bg-gold-soft/60")}>
-      <header className="flex items-center gap-2 whitespace-nowrap text-[14px] font-bold text-muted-foreground">
+    <li className={cn("col-span-1 min-w-0 rounded-2xl p-5 md:col-span-3 xl:col-span-2", t.total ? "border border-gold/60 bg-gold-soft" : "border-2 border-dashed border-gold/60 bg-gold-soft/60")}>
+      <header className="flex min-w-0 items-center gap-2 text-[14px] font-bold text-muted-foreground">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-gold/20 text-gold-ink"><Target className="h-4 w-4" aria-hidden="true" /></span>
-        مستهدف <bdi dir="ltr">{yearLabel(year)}</bdi>
+        <span className="min-w-0 truncate">مستهدف <bdi dir="ltr">{yearLabel(year)}</bdi></span>
         {t.total > 0 && (
           <button type="button" onClick={onEdit} aria-label="تعديل المستهدف" className="ms-auto grid h-8 w-8 place-items-center rounded-full text-gold-ink hover:bg-gold/20">
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
