@@ -23,6 +23,7 @@
   var EMBED = /[?&]embed=1/.test(location.search)
   var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال']]
   var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع']
+  var HINTS = ['الإشغال والانسحاب والمستهدف', 'وجودة التواصل لكل فرع', 'خطط الفروع والاعتماد', 'حسب المدارس والشركة', 'المشتركون لكل قناة', 'استجابة كل تحويلات الفروع']
   var N = VIEWS.length
   var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
   var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
@@ -231,10 +232,14 @@
     return 'قنوات واتساب الفروع والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
   }
   function header() {
-    var dots = VIEWS.map(function (d) { return '<span class="dot' + (d[0] === view ? ' on' : '') + '"><b>' + d[0] + '</b>' + d[1] + '</span>' }).join('')
+    var cur = VIEWS[view - 1]
+    // one dropdown instead of a row of buttons (طلب مدير المنصة); on the TV it also holds full screen and sign out
+    var items = VIEWS.map(function (d, i) { return '<button type="button" class="vi' + (d[0] === view ? ' on' : '') + '" data-v="' + d[0] + '"><b>' + d[0] + '</b><span>' + TITLES[i] + '<small>' + HINTS[i] + '</small></span></button>' }).join('')
+    var acts = EMBED ? '' : '<div class="vsep"></div><button type="button" class="vi act" data-act="full"><span>ملء الشاشة</span></button><button type="button" class="vi act" data-act="out"><span>تسجيل الخروج</span></button>'
     var now = new Date()
     return '<header class="hd"><div class="brand"><div class="mark">✦</div><div><h1>' + TITLES[view - 1] + '</h1><p>' + subtitle() + '</p></div></div>' +
-      '<div class="views">' + dots + '</div>' +
+      '<div class="vpick"><button type="button" class="vsel" id="vsel" aria-haspopup="true" aria-expanded="false"><b>' + cur[0] + '</b><span>' + cur[1] + '</span><i class="caret"></i></button>' +
+      '<div class="vlist" id="vlist">' + items + acts + '</div></div>' +
       '<div class="clock"><b id="clk">' + esc(timeFmt.format(now)) + '</b><span id="day">' + esc(dayFmt.format(now)) + '</span></div></header>'
   }
   function keys(items) { return '<p class="keys">' + items.map(function (k) { return '<span><em class="' + k[0] + '"></em>' + k[1] + '</span>' }).join('') + '</p>' }
@@ -630,14 +635,12 @@
   /* ------------------------------------------------------------ render and control */
   function footer() {
     var st = online ? 'آخر تحديث ' + timeFmt.format(lastOk || new Date()) : 'غير متصل · آخر تحديث ' + (lastOk ? timeFmt.format(lastOk) : '—')
-    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض: ' : 'اختر العرض من الريموت: ') + '<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
-      '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>' +
-      (EMBED ? '' : '<div class="menu" id="menu"><button type="button" id="m-full">ملء الشاشة</button><button type="button" id="m-out">تسجيل الخروج</button></div>')
+    return '<div class="hint"><span>' + (EMBED ? 'اختر العرض من القائمة أو بالأرقام ' : 'اختر العرض: <kbd>OK</kbd> يفتح القائمة، أو الأرقام ') + '<kbd>1</kbd>–<kbd>' + N + '</kbd> أو الأسهم <kbd>→</kbd><kbd>←</kbd></span>' +
+      '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>'
   }
   function render() {
     var body = [view1, view2, view3, view4, view5, view6][view - 1]()
     app.innerHTML = body + footer()
-    if (!EMBED) bindMenu()
   }
   function setView(v) {
     v = ((v - 1 + N) % N) + 1
@@ -676,44 +679,77 @@
     }
   }
 
-  /* keys: 1-6 pick a view, arrows step through them (left = next, as the views run right to left), OK opens the menu */
+  /* keys: 1-6 pick a view, arrows step through them (left = next, as the views run right to left),
+     OK (or down) opens the views list; in it up/down move, OK picks, back closes */
   var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6 }
+  var listTimer = null
+  function listEl() { return document.getElementById('vlist') }
+  function listItems() { var l = listEl(); return l ? [].slice.call(l.querySelectorAll('.vi')) : [] }
+  function listOpen() { var l = listEl(); return !!(l && l.classList.contains('on')) }
+  function armList() { clearTimeout(listTimer); listTimer = setTimeout(closeList, 10000) }
+  function openList() {
+    var l = listEl(), b = document.getElementById('vsel')
+    if (!l) return
+    l.classList.add('on')
+    if (b) b.setAttribute('aria-expanded', 'true')
+    var cur = l.querySelector('.vi.on') || listItems()[0]
+    if (cur) cur.focus()
+    armList()
+  }
+  function closeList() {
+    var l = listEl(), b = document.getElementById('vsel')
+    clearTimeout(listTimer)
+    if (l) l.classList.remove('on')
+    if (b) b.setAttribute('aria-expanded', 'false')
+  }
+  function moveFocus(d) {
+    var it = listItems()
+    if (!it.length) return
+    var i = it.indexOf(document.activeElement)
+    it[i < 0 ? 0 : (i + d + it.length) % it.length].focus()
+    armList()
+  }
+  function activate(el) {
+    if (!el) return
+    var v = el.getAttribute('data-v'), act = el.getAttribute('data-act')
+    closeList()
+    if (v) setView(+v)
+    else if (act === 'full') { var de = document.documentElement, f = de.requestFullscreen || de.webkitRequestFullscreen; if (f) f.call(de) }
+    else if (act === 'out' && window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); data = EMPTY_DATA(); showLogin() }
+  }
   document.addEventListener('keydown', function (e) {
     if (!started) return
-    var tag = (e.target && e.target.tagName) || ''
-    var menuOpen = !!document.querySelector('.menu.on')
     var k = e.key, code = e.keyCode
     var n = /^[1-6]$/.test(k) ? +k : KEYS[code]
-    if (n) { e.preventDefault(); hideMenu(); setView(n); return }
-    if (!menuOpen && (k === 'ArrowLeft' || code === 37)) { e.preventDefault(); setView(view + 1); return }
-    if (!menuOpen && (k === 'ArrowRight' || code === 39)) { e.preventDefault(); setView(view - 1); return }
-    if (k === 'Escape' || code === 461 || code === 10009 || k === 'GoBack') { hideMenu(); return }
-    if (!EMBED && !menuOpen && tag !== 'BUTTON' && (k === 'Enter' || code === 13)) { e.preventDefault(); showMenu() }
+    if (n) { e.preventDefault(); closeList(); setView(n); return }
+    if (listOpen()) {
+      if (k === 'ArrowDown' || code === 40) { e.preventDefault(); moveFocus(1); return }
+      if (k === 'ArrowUp' || code === 38) { e.preventDefault(); moveFocus(-1); return }
+      if (k === 'Enter' || code === 13) { e.preventDefault(); var a = document.activeElement; activate(a && a.classList && a.classList.contains('vi') ? a : null); return }
+      if (k === 'Escape' || code === 461 || code === 10009 || k === 'GoBack' || code === 8 || k === 'ArrowLeft' || code === 37 || k === 'ArrowRight' || code === 39) { e.preventDefault(); closeList(); return }
+      return
+    }
+    if (k === 'ArrowLeft' || code === 37) { e.preventDefault(); setView(view + 1); return }
+    if (k === 'ArrowRight' || code === 39) { e.preventDefault(); setView(view - 1); return }
+    if (k === 'Enter' || code === 13 || k === 'ArrowDown' || code === 40) { e.preventDefault(); openList() }
   })
   window.addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.type !== 'andalus-screen') return
-    if (e.data.view) setView(+e.data.view)
+    if (e.data.view) { closeList(); setView(+e.data.view) }
     if (e.data.refresh && started) poll()
   })
-
-  var menuTimer = null
-  function bindMenu() {
-    var full = document.getElementById('m-full'), out = document.getElementById('m-out')
-    full.onclick = function () { var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; if (f) f.call(el); hideMenu() }
-    out.onclick = function () { if (window.confirm('تسجيل خروج الشاشة؟')) { saveSession(null); data = EMPTY_DATA(); showLogin() } }
+  function inside(el, cls) {
+    for (; el && el !== stage; el = el.parentNode) if (el.classList && el.classList.contains(cls)) return el
+    return null
   }
-  function showMenu() {
-    var m = document.getElementById('menu')
-    if (!m) return
-    if (!m.classList.contains('on')) { m.classList.add('on'); document.getElementById('m-full').focus() }
-    clearTimeout(menuTimer); menuTimer = setTimeout(hideMenu, 8000)
-  }
-  function hideMenu() { var m = document.getElementById('menu'); if (m) m.classList.remove('on') }
   stage.addEventListener('click', function (e) {
+    if (!started) return
+    var item = inside(e.target, 'vi')
+    if (item) { activate(item); return }
+    if (inside(e.target, 'vsel')) { if (listOpen()) closeList(); else openList(); return }
     if (/BUTTON|INPUT/.test(e.target.tagName)) return
-    var dot = e.target.closest ? e.target.closest('.dot') : null
-    if (dot) { setView(+dot.querySelector('b').textContent); return }
-    if (!EMBED) showMenu()
+    if (listOpen()) closeList()
+    else if (!EMBED) openList()
   })
 
   async function keepAwake() {

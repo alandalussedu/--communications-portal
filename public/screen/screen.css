@@ -32,11 +32,6 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #05050f; c
 .hd h1 { font-size: 50px; font-weight: 800; line-height: 1.05; }
 .brand p { font-size: 22px; color: var(--mut); margin-top: 6px; }
 .brand p b { color: var(--fg); }
-.views { display: flex; }
-.dot { display: flex; align-items: center; padding: 10px 14px 10px 20px; border-radius: 999px; font-size: 21px; color: var(--mut); background: var(--card); border: 1px solid var(--line); margin-left: 10px; }
-.dot b { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--track); font-size: 18px; margin-left: 10px; }
-.dot.on { color: var(--fg); border-color: rgba(216, 177, 75, .6); }
-.dot.on b { background: var(--gold); color: #12122a; }
 .clock { text-align: left; }
 .clock b { display: block; font-size: 56px; font-weight: 800; line-height: 1; }
 .clock span { font-size: 20px; color: var(--mut); }
@@ -122,7 +117,6 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .hint { position: absolute; left: 48px; right: 48px; bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: var(--mut); }
 .hint kbd { font-family: inherit; display: inline-block; min-width: 26px; text-align: center; padding: 0 6px; margin: 0 3px; border-radius: 7px; background: var(--track); color: var(--fg); font-weight: 700; }
 .state.off { color: var(--warn); }
-.dot { cursor: pointer; }
 
 /* views 2–4 */
 .of { font-size: 26px; font-weight: 700; color: var(--mut); margin-right: 12px; }
@@ -171,28 +165,17 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .login button[disabled] { opacity: .6; }
 .login .err { color: var(--bad); font-size: 22px; margin-top: 18px; min-height: 30px; }
 
-/* small menu that appears on any key, click or touch */
-.menu { position: absolute; top: 24px; left: 50%; margin-left: -200px; width: 400px; display: none; justify-content: center; background: rgba(19, 19, 46, .96); border: 1px solid var(--line); border-radius: 999px; padding: 10px; z-index: 5; }
-.menu.on { display: flex; }
-.menu button { flex: 1; height: 56px; border: 0; border-radius: 999px; background: var(--track); color: var(--fg); font: 700 22px/1.2 Tajawal, sans-serif; margin: 0 5px; cursor: pointer; }
-.menu button:focus { outline: 3px solid var(--gold); }
 
-/* header: four view buttons and the clock stay on one line; a long subtitle is cut, not wrapped */
+/* header: title, the views dropdown and the clock stay on one line; a long subtitle is cut, not wrapped */
 .hd > .brand { -webkit-box-flex: 1; flex: 1; min-width: 0; margin-left: 24px; }
 .brand > div { min-width: 0; }
 .mark { flex-shrink: 0; }
 .hd h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.views { flex-shrink: 0; }
-.views .dot { white-space: nowrap; font-size: 19px; padding: 9px 12px 9px 16px; }
-.views .dot b { width: 30px; height: 30px; font-size: 17px; }
 .clock { flex-shrink: 0; white-space: nowrap; margin-right: 24px; }
 .clock b { font-size: 50px; }
 .brp .tw { -webkit-box-flex: 1; flex: 1; min-width: 0; margin: 0 16px; }
 
-/* five views: header buttons stay on one line */
-.views .dot { font-size: 17px; padding: 8px 10px 8px 14px; margin-left: 8px; }
-.views .dot b { width: 28px; height: 28px; font-size: 16px; margin-left: 8px; }
 .hd h1 { font-size: 44px; }
 
 /* 1 · students and withdrawal: seven indicators */
@@ -272,9 +255,7 @@ i.ok { background: var(--ok); } i.sky { background: var(--sky); } i.warn { backg
 .dlt.up { color: var(--ok); } .dlt.dn { color: var(--bad); } .dlt.no { color: var(--mut); font-weight: 400; }
 .sep { color: var(--mut); margin: 0 10px; }
 
-/* tighter header so the longest title fits beside five buttons */
-.views .dot { font-size: 16px; padding: 7px 9px 7px 12px; margin-left: 6px; }
-.views .dot b { width: 26px; height: 26px; font-size: 15px; margin-left: 7px; }
+/* tighter header */
 .hd h1 { font-size: 40px; }
 .clock b { font-size: 46px; }
 .clock { margin-right: 18px; }
@@ -345,6 +326,25 @@ i.sm { background: #55557a; }
 .hqt { font-size: 17px; color: var(--mut); line-height: 1.3; margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .col > .card.hqc { flex: 0 0 auto; }
 
-/* six views: the header buttons still fit beside the longest title */
-.views .dot { font-size: 15px; padding: 7px 8px 7px 11px; margin-left: 5px; }
-.views .dot b { width: 25px; height: 25px; font-size: 14px; margin-left: 6px; }
+
+/* the views dropdown (one button instead of a row of view buttons): OK or a click opens it;
+   on the TV it also holds full screen and sign out. Absolute list, no flex gap, explicit line heights. */
+.vpick { position: relative; flex-shrink: 0; }
+.vsel { display: flex; align-items: center; height: 60px; padding: 0 14px 0 20px; border-radius: 999px; border: 1px solid rgba(216, 177, 75, .6); background: var(--card); color: var(--fg); font: 700 22px/1.2 Tajawal, Tahoma, sans-serif; white-space: nowrap; cursor: pointer; }
+.vsel b { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: #12122a; font-size: 19px; margin-left: 12px; flex-shrink: 0; }
+.vsel .caret { display: block; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid var(--gold); margin-right: 16px; }
+.vsel[aria-expanded="true"] .caret { border-top: 0; border-bottom: 10px solid var(--gold); }
+.vsel:focus { outline: 3px solid var(--gold); outline-offset: 3px; }
+.vlist { position: absolute; top: 72px; left: 0; width: 500px; display: none; flex-direction: column; background: #17173d; border: 1px solid #2f2f5c; border-radius: 24px; padding: 10px; z-index: 10; box-shadow: 0 30px 60px rgba(0, 0, 0, .55); }
+.vlist.on { display: flex; }
+.vi { display: flex; align-items: center; width: 100%; padding: 11px 14px; border: 0; border-radius: 16px; background: transparent; color: var(--fg); font: 700 22px/1.25 Tajawal, Tahoma, sans-serif; text-align: right; cursor: pointer; }
+.vi + .vi { margin-top: 3px; }
+.vi b { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: var(--track); font-size: 19px; margin-left: 14px; flex-shrink: 0; }
+.vi span { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vi small { display: block; font-size: 16px; font-weight: 400; color: var(--mut); line-height: 1.3; margin-top: 2px; }
+.vi.on { background: rgba(216, 177, 75, .12); }
+.vi.on b { background: var(--gold); color: #12122a; }
+.vi:focus { outline: 3px solid var(--gold); outline-offset: -3px; }
+.vi.act { font-size: 20px; color: var(--mut); padding: 12px 18px; }
+.vi.act:focus { color: var(--fg); }
+.vsep { height: 1px; background: var(--line); margin: 8px 6px; }
