@@ -139,11 +139,6 @@ export function BranchesView({ report, prev, directory, officers, officersReport
 
       {pv && <Compare v={v} pv={pv} month={report.month} prevMonth={prev!.month} />}
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-        {directory && v.notInDir.length > 0 && <NotInDirectory rows={v.notInDir} />}
-        {v.hq && <HeadOffice g={v.hq} />}
-      </div>
-
       {officersReport && officersReport.source !== report.source && (
         <p className="text-[13px] leading-relaxed text-muted-foreground">
           تقرير «مسؤولو التواصل» لشهر {monthLabel(report.month)} {officersReport.source.startsWith("من ") ? officersReport.source : `من «${officersReport.source}»`}، وأرقام مسؤولي التواصل هنا من ملف 3CX، فقد تختلف قليلًا.
@@ -447,53 +442,5 @@ function Compare({ v, pv, month, prevMonth }: { v: ReturnType<typeof branchView>
         </span>
       </div>
     </Panel>
-  )
-}
-
-/* ------------------------------------------------------------ extensions the directory does not have */
-function NotInDirectory({ rows }: { rows: ExtRow[] }) {
-  const [all, setAll] = useState(false)
-  return (
-    <Alert tone="sky" title="تحويلات ليست في دليل التحويلات" hint="نُسبت لفرعها من نطاق الرقم، وتحتاج إضافة اسمها في الدليل.">
-      <ul className="mt-2 divide-y border-t">
-        {(all ? rows : rows.slice(0, LIST)).map((r) => (
-          <li key={r.ext} className="flex items-center justify-between gap-3 px-5 py-2.5">
-            <span className="min-w-0">
-              <span className="block truncate text-[14.5px] font-bold leading-snug"><Ext n={r.ext} />{r.place.branch} · {r.place.section}</span>
-              <span className="block truncate text-[12px] leading-snug text-muted-foreground">
-                {r.officer && r.name ? `${r.name} (مسؤول التواصل) · ` : ""}
-                {r.label ? <>الاسم في السنترال: <bdi dir="ltr">{r.label}</bdi></> : "لا اسم له في السنترال"}
-              </span>
-            </span>
-            <span className="num shrink-0 whitespace-nowrap text-[13.5px]">{callsWord(r.attempts)}</span>
-          </li>
-        ))}
-      </ul>
-      <More total={rows.length} open={all} onToggle={() => setAll((a) => !a)} />
-    </Alert>
-  )
-}
-
-/* ------------------------------------------------------------ head office: shown apart, not ranked */
-function HeadOffice({ g }: { g: BranchGroup }) {
-  const top = [...g.rows].sort((a, b) => b.attempts - a.attempts).slice(0, 4)
-  return (
-    <Alert tone="warn" title="الإدارة العامة" hint="تُعرض منفصلة ولا تدخل ترتيب الفروع.">
-      <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-2">
-        <p className="text-[14px] leading-snug">رد على <b className="num">{formatNumber(g.answered)}</b> من <b className="num">{formatNumber(g.attempts)}</b> مكالمة محوّلة إلى {extsWord(g.exts)}</p>
-        <RateChip t={g} />
-      </div>
-      <ul className="divide-y border-t">
-        {top.map((r) => (
-          <li key={r.ext} className="flex items-center justify-between gap-3 px-5 py-2.5">
-            <span className="min-w-0">
-              <span className="block truncate text-[14px] font-bold leading-snug"><Ext n={r.ext} />{r.name ?? "بلا اسم في الدليل"}</span>
-              <span className="block truncate text-[12px] leading-snug text-muted-foreground">{r.place.section}{r.title ? ` · ${r.title}` : ""}</span>
-            </span>
-            <span className="num shrink-0 whitespace-nowrap text-[13.5px]">رد على {formatNumber(r.answered)} من {formatNumber(r.attempts)}</span>
-          </li>
-        ))}
-      </ul>
-    </Alert>
   )
 }

@@ -1,7 +1,7 @@
 /**
  * «السنترال · الفروع» as A4 pages, in the layout of the officers report: the month's
  * summary and branch ranking, the branch table and follow-up list, then every
- * branch's extensions, and last the extensions the directory lacks and head office.
+ * branch's extensions.
  */
 import type { ReactNode } from "react"
 import type { PbxBranchReport, PbxDirectory, PbxOfficer } from "@/data/types"
@@ -185,11 +185,6 @@ export function pbxBranchPages(report: PbxBranchReport, directory: PbxDirectory 
       <H sub="كل التحويلات داخل الفرع، من الأعلى استجابة إلى الأدنى.">ترتيب الفروع حسب نسبة الرد</H>
       <Legend />
       <Bars list={v.branches} />
-      {v.hq && (
-        <p className="mt-2 rounded-lg px-3 py-1.5 text-[11.5px] leading-snug" style={{ background: "#fdf3dc" }}>
-          <b>الإدارة العامة</b> (خارج ترتيب الفروع): رد على {formatNumber(v.hq.answered)} من {formatNumber(v.hq.attempts)} · <Ltr>{pct(rate(v.hq))}</Ltr>. تفاصيلها في الصفحة الأخيرة.
-        </p>
-      )}
     </Page>
   ))
 
@@ -296,80 +291,5 @@ export function pbxBranchPages(report: PbxBranchReport, directory: PbxDirectory 
     )),
   )
 
-  // 4 · what the directory lacks, and head office
-  const missing = directory ? v.notInDir : []
-  if (missing.length || v.hq)
-    bodies.push((n, total) => (
-      <Page key="last" n={n} total={total} generatedAt={generatedAt}>
-        {missing.length > 0 && (
-          <div className="mb-5">
-            <H sub="نُسبت لفرعها من نطاق الرقم، وتحتاج إضافة اسمها في دليل التحويلات.">تحويلات ليست في دليل التحويلات</H>
-            <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
-              <colgroup>
-                <col style={{ width: 56 }} />
-                <col style={{ width: 230 }} />
-                <col style={{ width: 300 }} />
-                <col style={{ width: 112 }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  {["التحويلة", "الفرع · القسم", "الاسم في السنترال", "المكالمات"].map((c, k) => (
-                    <th key={c} className={th} style={{ textAlign: k < 3 ? "start" : "center" }}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {missing.slice(0, 22).map((r) => (
-                  <tr key={r.ext}>
-                    <td className={`${td} num font-bold text-muted-foreground`}>{r.ext}</td>
-                    <td className={td}>{r.place.branch} · {r.place.section}</td>
-                    <td className={td}>{r.label ? <Ltr>{r.label}</Ltr> : "—"}{r.officer && r.name ? ` · ${r.name} (مسؤول التواصل)` : ""}</td>
-                    <td className={`${td} num text-center`}>{formatNumber(r.attempts)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {missing.length > 22 && <p className="mt-1.5 text-[11px] text-muted-foreground">و{formatNumber(missing.length - 22)} أخرى في المنصة.</p>}
-          </div>
-        )}
-        {v.hq && (
-          <div>
-            <H sub="تُعرض منفصلة ولا تدخل ترتيب الفروع.">الإدارة العامة</H>
-            <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
-              <colgroup>
-                <col style={{ width: 56 }} />
-                <col style={{ width: 190 }} />
-                <col style={{ width: 200 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 52 }} />
-                <col style={{ width: 80 }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  {["التحويلة", "الاسم", "المسمى الوظيفي", "الإدارة", "المكالمات", "نسبة الرد"].map((c, k) => (
-                    <th key={c} className={th} style={{ textAlign: k < 4 ? "start" : "center" }}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...v.hq.rows].sort((a, b) => b.attempts - a.attempts).slice(0, 18).map((r) => (
-                  <tr key={r.ext}>
-                    <td className={`${td} num font-bold text-muted-foreground`}>{r.ext}</td>
-                    <td className={`${td} font-bold`}>{r.name ?? "بلا اسم في الدليل"}</td>
-                    <td className={`${td} text-muted-foreground`}>{r.title ?? ""}</td>
-                    <td className={td}>{r.place.section}</td>
-                    <td className={`${td} num text-center`}>{formatNumber(r.attempts)}</td>
-                    <td className={`${td} text-center`}><Chip t={r} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-          خارج التقرير: الرد الآلي والطوابير وموظفو خدمة العملاء في الخط الموحد. الفرع والقسم من نطاق رقم التحويلة، والاسم والمسمى من دليل التحويلات.{report.waitingExcluded > 0 ? ` استُبعدت ${formatNumber(report.waitingExcluded)} مكالمة «Waiting».` : ""}
-        </p>
-      </Page>
-    ))
   return bodies.map((b, i) => b(i + 1, bodies.length))
 }
