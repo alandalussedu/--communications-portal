@@ -369,3 +369,22 @@ i.sm { background: #55557a; }
 .ol .nm span { display: block; font-size: 14px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ol .v { font-size: 25px; line-height: 1; }
 .ol .vs { width: 96px; flex-shrink: 0; font-size: 15px; line-height: 1.25; color: var(--mut); text-align: left; margin-right: 10px; }
+
+/* 1 · eight indicators in one row (نسبة النمو added): a little tighter so none is squeezed */
+.kpis.k8 .k { padding: 18px 16px; margin-left: 12px; }
+.kpis.k8 .k:last-child { margin-left: 0; }
+.kpis.k8 .hero { -webkit-box-flex: 1.2; flex: 1.2; }
+.kpis.k8 .k > span { font-size: 17px; }
+.kpis.k8 .k > b { font-size: 40px; }
+.kpis.k8 .hero > b { font-size: 48px; }
+.kpis.k8 .k small { font-size: 14.5px; line-height: 1.35; }
+.kpis.k8 .k small .tag { font-size: 13px; vertical-align: 1px; }
+.kpis.k8 .gw { width: 128px; }
+.kpis.k8 .gauge { width: 128px; height: 73px; }
+.kpis.k8 .gw b { font-size: 26px; }
+.kpis.k8 .k > b.soft { font-size: 24px; }
+.kpis.k8 .hero small { white-space: nowrap; font-size: 14px; }
+.kpis.k8 .d { margin-left: 6px; } .kpis.k8 .d.g { margin-right: 14px; }
+.kpis.k8 .gw b { font-size: 22px; bottom: -4px; }
+.kpis.k8 .k small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.kpis.k8 .hero > small { display: flex; }

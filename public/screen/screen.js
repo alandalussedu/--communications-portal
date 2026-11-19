@@ -288,10 +288,13 @@
       ? '<div class="k tg"><span>مستهدف ' + L(ti.year.replace('-', '/')) + '</span><b>' + num(ti.total) + '</b><small>' +
         (ti.complete ? 'الحاليون ' + pct(t.current / ti.total) + ' منه' : 'مُدخل لـ ' + ti.entered + ' من ' + ti.of + ' فرعًا') + '</small></div>'
       : '<div class="k tg"><span>مستهدف ' + L(ti.year.replace('-', '/')) + '</span><b class="soft">لم يُحدَّد بعد</b><small>يُدخل من تبويب أعداد الطلاب</small></div>'
-    var kpis = '<section class="kpis k7">' +
+    var kpis = '<section class="kpis k7 k8">' +
       '<div class="k hero"><span>الطلاب الحاليون</span><b>' + num(t.current) + '</b>' +
       (t.regular != null ? '<div class="split"><i style="width:' + (t.regular / Math.max(t.current, 1) * 100).toFixed(1) + '%"></i></div><small><em class="d w"></em>منتظم ' + num(t.regular) + '<em class="d g"></em>مستجد ' + num(t.newcomers) + '</small>' : '') + '</div>' +
-      '<div class="k"><span>الطلاب الجدد</span><b>' + num(t.newcomers) + '</b>' + (t.growth != null ? '<small>نمو <strong class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</strong>' + (prelim ? ' <i class="tag">مبدئية</i>' : '') + '</small>' : '') + '</div>' +
+      '<div class="k"><span>الطلاب الجدد</span><b>' + num(t.newcomers) + '</b><small>بحالة «مستجد»</small></div>' +
+      // نسبة النمو: its own card, as on the platform page (طلب مدير المنصة)
+      '<div class="k"><span>نسبة النمو</span>' + (t.growth != null ? '<b class="' + (t.growth >= 0 ? 'pos' : 'neg') + '">' + signed(t.growth) + '</b>' : '<b class="soft">—</b>') +
+        '<small>' + (prelim && t.growth != null ? '<i class="tag">مبدئية</i> ' : '') + (t.previous != null ? 'العام الماضي ' + num(t.previous) : 'عن العام الماضي') + '</small></div>' +
       '<div class="k"><span>المنسحبون</span><b>' + num(t.withdrawn) + '</b>' + (t.transferred != null ? '<small>لا يشمل ' + num(t.transferred) + ' محوّلًا</small>' : '') + '</div>' +
       '<div class="k"><span>نسبة الانسحاب</span><b>' + pct(t.withdrawalRate) + '</b><small><i class="chip ' + w[0] + '">' + w[1] + '</i></small></div>' +
       '<div class="k gk"><span>نسبة الإشغال</span><div class="gw">' + gauge(t.occupancy) + '<b>' + pct(t.occupancy) + '</b></div><i class="chip ' + o[0] + '">' + o[1] + '</i></div>' +
