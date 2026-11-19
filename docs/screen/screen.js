@@ -1,7 +1,7 @@
 /*
  * شاشة العرض (للتلفزيون في غرفة المدير ولتبويب «شاشة العرض» في المنصة).
- * سبعة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
- * التواصل الاجتماعي حسب المدارس، قنوات الواتساب، السنترال للفروع، السنترال لمسؤولي التواصل.
+ * تسعة عروض يختارها المشاهد يدويًا: أعداد الطلاب والانسحاب، رضا العملاء وجودة التواصل، المسؤولية المجتمعية،
+ * التواصل الاجتماعي حسب المدارس، قنوات الواتساب، السنترال للفروع، السنترال لمسؤولي التواصل، الخطط العلاجية، المنافسون.
  * صفحة مستقلة عن تطبيق المنصة، مكتوبة بـ JavaScript قديم (ES2017، بلا ?. ولا ??)
  * لأن متصفحات التلفزيونات الذكية متأخرة عن المتصفحات الحديثة. افحص أي تعديل بمحلل ES2017.
  *
@@ -9,7 +9,7 @@
  * داخل المنصة (?embed=1 في إطار تبويب «شاشة العرض»): تأخذ رمز الدخول من صفحة المنصة نفسها
  * (window.parent.__andalusScreen.token) ولا تجدّده أبدًا حتى لا تُخرج المدير من المنصة.
  * قاعدة البيانات لا تعطي حساب الشاشة إلا studentCounts وcsrPlans وindicators وpbxBranchReports وpbxOfficers
- * وpbxReports والمجموعات العامة (screen_collection).
+ * وpbxReports وremedialStages وremedialRows وremedialSync وcompetitors وcompetitorsMeta والمجموعات العامة (screen_collection).
  * الرابط والمفتاح العام (publishable) عامّان بطبيعتهما كما في src/config.ts.
  */
 (function () {
@@ -21,9 +21,9 @@
   var VIEW_STORE = 'andalus-screen-view'
   var LEVELS = { wdGood: 0.08, wdFollow: 0.12, ocHigh: 0.85, ocGood: 0.7 } // اعتمدها مدير المنصة
   var EMBED = /[?&]embed=1/.test(location.search)
-  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال · الفروع'], [7, 'السنترال · المسؤولون']]
-  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع', 'السنترال · مسؤولو التواصل']
-  var HINTS = ['الإشغال والانسحاب والمستهدف', 'وجودة التواصل لكل فرع', 'خطط الفروع والاعتماد', 'حسب المدارس والشركة', 'المشتركون لكل قناة', 'استجابة كل تحويلات الفروع', 'كل مسؤول على تحويلته']
+  var VIEWS = [[1, 'الطلاب والانسحاب'], [2, 'رضا العملاء'], [3, 'المسؤولية المجتمعية'], [4, 'التواصل الاجتماعي'], [5, 'قنوات الواتساب'], [6, 'السنترال · الفروع'], [7, 'السنترال · المسؤولون'], [8, 'الخطط العلاجية'], [9, 'المنافسون']]
+  var TITLES = ['أعداد الطلاب والانسحاب', 'رضا العملاء وجودة التواصل', 'المسؤولية المجتمعية', 'التواصل الاجتماعي', 'قنوات الواتساب', 'السنترال · استجابة الفروع', 'السنترال · مسؤولو التواصل', 'الخطط العلاجية', 'دراسة المنافسين']
+  var HINTS = ['الإشغال والانسحاب والمستهدف', 'وجودة التواصل لكل فرع', 'خطط الفروع والاعتماد', 'حسب المدارس والشركة', 'المشتركون ونسبتهم إلى الطلاب', 'استجابة كل تحويلات الفروع', 'كل مسؤول على تحويلته', 'تنفيذ خطط الفروع وأسبابها', 'الرسوم والقرب والقوة والضعف']
   var N = VIEWS.length
   var BRANCH = { zahra: 'الزهراء', rawdah: 'الروضة', 'shatee-intl': 'الشاطئ العالمية', 'shatee-gifted': 'الشاطئ للموهوبين', hamdaniya: 'الحمدانية', faiha: 'الفيحاء', abhur: 'أبحر', manar: 'المنار', makkah: 'مكة', taif: 'الطائف', najran: 'نجران', jouf: 'الجوف', abha: 'أبها', khamis: 'خميس مشيط', riyadh: 'الرياض' }
   var PLATFORM = { youtube: 'يوتيوب', instagram: 'إنستغرام', tiktok: 'تيك توك', snapchat: 'سناب شات', facebook: 'فيسبوك', whatsapp: 'واتساب', linkedin: 'لينكدإن', x: 'إكس', telegram: 'تيليجرام' }
@@ -32,7 +32,7 @@
   var app = document.getElementById('app')
   var stage = document.getElementById('stage')
   var session = null
-  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [], pbxReports: [], pbxOfficers: [], officerReports: [] } }
+  var EMPTY_DATA = function () { return { counts: null, targets: [], plans: [], indicators: [], accounts: [], readings: [], pbxReports: [], pbxOfficers: [], officerReports: [], remStages: [], remRows: [], remSync: null, competitors: [], competitorsMeta: null } }
   var data = EMPTY_DATA()
   var view = 1
   var online = true
@@ -194,6 +194,12 @@
       api('/rest/v1/docs?collection=eq.pbxBranchReports&select=id,data&order=id.desc&limit=2'),
       api('/rest/v1/docs?collection=eq.pbxOfficers&select=id,data'),
       api('/rest/v1/docs?collection=eq.pbxReports&select=id,data&order=id.desc&limit=2'),
+      // الخطط العلاجية والمنافسون: الحقول التي يعرضها العرضان 8 و9 فقط (الصفوف كاملة أكبر من أن تُجلب كل دقيقة)
+      api('/rest/v1/docs?collection=eq.remedialStages&select=id,b:data->>branch,e:data->empty'),
+      api('/rest/v1/docs?collection=eq.remedialRows&select=id,b:data->>branch,s:data->>status,c:data->>cause'),
+      api('/rest/v1/docs?collection=eq.remedialSync&select=id,lastRun:data->>lastRun'),
+      api('/rest/v1/docs?collection=eq.competitors&select=id,name:data->>name,baseline:data->baseline,suggested:data->suggested,feesMin:data->feesMin,feesMax:data->feesMax,proxKey:data->>proxKey,offers3:data->>offers3,accredTags:data->accredTags,strengthThemes:data->strengthThemes,weaknessThemes:data->weaknessThemes'),
+      api('/rest/v1/docs?collection=eq.competitorsMeta&select=id,region:data->>region,readAt:data->>readAt,title:data->>title'),
     ])
     var rows = function (r) { return (r || []).map(function (x) { var d = x.data || {}; d.id = x.id; return d }) }
     var counts = rows(res[0]).filter(function (d) { return d.date && d.branches && d.total })
@@ -204,7 +210,10 @@
     var byMonth = function (a, b) { return a.month < b.month ? 1 : a.month > b.month ? -1 : 0 }
     var oreps = rows(res[7]).filter(function (d) { return d.month && d.lines })
     oreps.sort(byMonth)
-    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]), pbxReports: reports.slice(0, 2), pbxOfficers: rows(res[6]), officerReports: oreps.slice(0, 2) }
+    var next = { counts: counts[0] || null, targets: targets, plans: rows(res[1]), indicators: rows(res[4]), accounts: rows(res[2]).filter(function (a) { return a.active !== false }), readings: rows(res[3]), pbxReports: reports.slice(0, 2), pbxOfficers: rows(res[6]), officerReports: oreps.slice(0, 2),
+      remStages: res[8] || [], remRows: res[9] || [], remSync: (res[10] || []).filter(function (d) { return d.id === 'status' })[0] || null,
+      competitors: (res[11] || []).filter(function (c) { return c.name }).map(function (c) { c.accredTags = c.accredTags || []; c.strengthThemes = c.strengthThemes || []; c.weaknessThemes = c.weaknessThemes || []; return c }),
+      competitorsMeta: (res[12] || [])[0] || null }
     online = true
     lastOk = new Date()
     var changed = JSON.stringify(next) !== JSON.stringify(data)
@@ -234,6 +243,14 @@
       if (!ro) return 'تقرير مكالمات 3CX'
       var src = ro.source && ro.source.indexOf('3CX') < 0 ? ' · ' + esc(ro.source) : ''
       return 'استجابة مسؤولي التواصل على تحويلاتهم · <b>' + esc(fmtMonth(ro.month)) + '</b>' + (pbxPartial(ro) ? ' · من ' + (+ro.from.slice(8, 10)) + ' إلى ' + esc(fmtDate(ro.to)) + ' فقط' : src)
+    }
+    if (view === 8) {
+      var rs = data.remSync && data.remSync.lastRun
+      return 'خطط الفروع لأسباب الانسحاب من ملفات الفروع' + (rs ? ' · آخر قراءة <b>' + esc(fmtDate(rs)) + '</b>' : '')
+    }
+    if (view === 9) {
+      var cm = data.competitorsMeta
+      return 'منافسو مدارس الأندلس في ' + esc((cm && cm.region) || 'جدة') + ' · من ملف «' + esc((cm && cm.title) || 'دراسة المنافسين') + '»' + (cm && cm.readAt ? ' · آخر قراءة <b>' + esc(fmtDate(cm.readAt)) + '</b>' : '')
     }
     var m = latestMonth()
     if (view === 4) return 'حسابات المدارس والشركة' + (m ? ' · <b>' + esc(fmtMonth(m)) + '</b>' : '')
@@ -308,17 +325,13 @@
         '<span class="tw"><span class="tr2" style="width:' + (b.capacity / maxCap * 100).toFixed(1) + '%"><i class="' + oc(b.occupancy)[0] + '" style="width:' + (Math.min(b.occupancy, 1) * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.occupancy) + '</b>' +
         '<span class="tw"><span class="tr2"><i class="' + wd(b.withdrawalRate)[0] + '" style="width:' + (b.withdrawalRate / maxW * 100).toFixed(1) + '%"></i></span></span><b>' + pct(b.withdrawalRate) + '</b><small>' + num(b.withdrawn) + '</small></div>'
     }).join('')
-    var watch = c.branches.filter(function (b) { return b.occupancy < LEVELS.ocGood || b.withdrawalRate > LEVELS.wdFollow })
-    watch.sort(function (a, b) {
-      var sa = (a.occupancy < LEVELS.ocGood) + (a.withdrawalRate > LEVELS.wdFollow), sb = (b.occupancy < LEVELS.ocGood) + (b.withdrawalRate > LEVELS.wdFollow)
-      return sb - sa || a.occupancy - b.occupancy
-    })
+    // نسبة الانسحاب وحدها، بلا الإشغال (طلب مدير المنصة): فوق حد «المتابعة» 12%، من الأعلى
+    var watch = c.branches.filter(function (b) { return b.withdrawalRate > LEVELS.wdFollow })
+    watch.sort(function (a, b) { return b.withdrawalRate - a.withdrawalRate })
     var shownWatch = watch.length > 7 ? watch.slice(0, 6) : watch
     var wrows = watch.length ? '<ul class="watch">' + shownWatch.map(function (b) {
-      return '<li><span class="n">' + esc(short(b.name)) + '</span><span>' +
-        (b.occupancy < LEVELS.ocGood ? '<i class="chip warn">إشغال ' + pct(b.occupancy) + '</i>' : '') +
-        (b.withdrawalRate > LEVELS.wdFollow ? '<i class="chip bad">انسحاب ' + pct(b.withdrawalRate) + '</i>' : '') + '</span></li>'
-    }).join('') + (watch.length > shownWatch.length ? '<li class="more">و' + (watch.length - shownWatch.length) + ' فروع أخرى في تبويب أعداد الطلاب</li>' : '') + '</ul>' : '<p class="none">كل الفروع ضمن الحدود المعتمدة</p>'
+      return '<li><span class="n">' + esc(short(b.name)) + '</span><span class="wv"><small>' + cnt(b.withdrawn, 'منسحب واحد', 'منسحبان', 'منسحبين', 'منسحبًا') + '</small><i class="chip bad">' + pct(b.withdrawalRate) + '</i></span></li>'
+    }).join('') + (watch.length > shownWatch.length ? '<li class="more">و' + (watch.length - shownWatch.length) + ' فروع أخرى في تبويب أعداد الطلاب</li>' : '') + '</ul>' : '<p class="none">لا فرع نسبة انسحابه فوق ' + L('12%') + '</p>'
     var SC = ['#d8b14b', '#33bdf2', '#8f8fe6', '#4fcf8e', '#c084fc', '#ef6a5c']
     var st = t.stages || [], names = c.stageNames || [], tot = st.reduce(function (a, b) { return a + b }, 0) || 1
     var stages = names.length && st.length ? '<div class="card"><h2>حسب المرحلة <span>الطلاب الحاليون</span></h2><div class="stack">' +
@@ -329,7 +342,7 @@
       '<div class="mrow mh"><span class="n">الفرع</span><span class="tw">الإشغال</span><b></b><span class="tw">نسبة الانسحاب</span><b></b><small>المنسحبون</small></div>' +
       '<div class="bars">' + rows + '</div>' +
       keys([['ok', 'إشغال مرتفع · انسحاب جيد'], ['sky', 'إشغال جيد'], ['warn', 'إشغال منخفض · انسحاب متابعة'], ['bad', 'انسحاب مرتفع']]) + '</div>' +
-      '<div class="col"><div class="card"><h2>فروع تحتاج متابعة <span>إشغال أقل من ' + L('70%') + ' أو انسحاب فوق ' + L('12%') + '</span></h2>' + wrows + '</div>' + stages + '</div></section>'
+      '<div class="col"><div class="card"><h2>فروع تحتاج متابعة <span>نسبة الانسحاب فوق ' + L('12%') + '</span></h2>' + wrows + '</div>' + stages + '</div></section>'
   }
 
   /* ------------------------------------------------------------ 2 · customer satisfaction and communication quality */
@@ -523,14 +536,58 @@
       return '<div class="wrow"><span class="n">' + esc(s.A[a].name) + '</span><span class="tw"><span class="tr"><i style="background:#25D366;width:' + (s.now[a] / mx * 100).toFixed(1) + '%"></i></span></span><b>' + num(s.now[a]) + '</b>' + chip + '</div>'
     }
     var half = Math.ceil(ids.length / 2)
-    var kpis = '<section class="kpis">' +
+    var kpis = '<section class="kpis k5">' +
       '<div class="k hero"><span>إجمالي المشتركين</span><b>' + num(total) + '</b><small>' + ids.length + ' قناة' + (company ? ': ' + (ids.length - company) + ' للفروع و' + (company === 1 ? 'قناة' : company + ' قنوات') + ' للشركة' : '') + ' · ' + esc(fmtMonth(s.cur)) + '</small></div>' +
       (s.prev && both.length ? '<div class="k"><span>الفرق عن ' + esc(monthWord(s.prev)) + '</span><b class="' + (dl >= 0 ? 'pos' : 'neg') + '">' + L((dl >= 0 ? '+' : '−') + num(Math.abs(dl))) + '</b><small>على ' + both.length + ' قناة لها قراءة في الشهرين</small></div>' +
         '<div class="k"><span>قنوات زادت / تراجعت</span><b><span class="pos">' + up + '</span><span class="sep">/</span><span class="neg">' + down + '</span></b><small>مقارنة بقراءة ' + esc(monthWord(s.prev)) + '</small></div>' : '') +
       '<div class="k"><span>أكبر قناة</span><b>' + num(s.now[ids[0]]) + '</b><small>' + esc(s.A[ids[0]].name) + '</small></div></section>'
     return header() + kpis +
-      '<section class="body eq"><div class="card"><h2>القنوات <span>المشتركون · الفرق عن ' + esc(s.prev ? monthWord(s.prev) : 'الشهر السابق') + '</span></h2><div class="bars">' + ids.slice(0, half).map(row).join('') + '</div></div>' +
-      '<div class="card"><h2>&nbsp;</h2><div class="bars">' + ids.slice(half).map(row).join('') + '</div></div></section>'
+      '<section class="body b5"><div class="w2"><div class="card"><h2>القنوات <span>المشتركون · الفرق عن ' + esc(s.prev ? monthWord(s.prev) : 'الشهر السابق') + '</span></h2><div class="bars">' + ids.slice(0, half).map(row).join('') + '</div></div>' +
+      '<div class="card"><h2>&nbsp;</h2><div class="bars">' + ids.slice(half).map(row).join('') + '</div></div></div>' + ratioCard(s, ids) + '</section>'
+  }
+
+  /* 5 · the third row: each branch's subscribers against its students (طلب مدير المنصة) */
+  // قنوات الفرع إلى اسمه في تقرير أعداد الطلاب: قناتا الشاطئ (العالمية وموهبة) لفرع «الشاطئ» الواحد في التقرير
+  var WA_STUDENTS = { 'shatee-intl': 'الشاطئ', 'shatee-gifted': 'الشاطئ' }
+  function nk(s) { return String(s || '').replace(/[أإآ]/g, 'ا').replace(/[ىئ]/g, 'ي').replace(/ء/g, '').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim() }
+  /** subscribers of all a branch's channels this month ÷ its current students in the latest pull; company channels have no students */
+  function waRatio(s, ids) {
+    var c = data.counts
+    if (!c) return null
+    var stu = {}
+    c.branches.forEach(function (b) { stu[nk(short(b.name))] = { name: short(b.name), students: b.current } })
+    var by = {}, out = {}
+    ids.forEach(function (a) {
+      var acc = s.A[a]
+      if (!acc.owner || acc.owner === 'company') return
+      var name = WA_STUDENTS[acc.owner] || BRANCH[acc.owner] || acc.owner
+      var st = stu[nk(name)]
+      if (!st || !(st.students > 0)) { out[name] = 1; return }
+      var e = by[st.name] || (by[st.name] = { name: st.name, students: st.students, subs: 0, channels: 0 })
+      e.subs += s.now[a]
+      e.channels++
+    })
+    var list = Object.keys(by).map(function (k) { var e = by[k]; e.ratio = e.subs / e.students; return e })
+    list.sort(function (a, b) { return b.ratio - a.ratio })
+    return { list: list, out: Object.keys(out), date: c.date }
+  }
+  function ratioCard(s, ids) {
+    var rt = waRatio(s, ids)
+    var title = '<h2>المشتركون إلى عدد الطلاب'
+    if (!rt || !rt.list.length)
+      return '<div class="card rto off">' + title + ' <span>' + (myRole === 'editor' && !data.counts ? 'تظهر بحساب مدير المنصة وحساب «شاشة عرض»، لأن أعداد الطلاب لهما فقط' : 'تظهر بعد رفع سحب أعداد الطلاب في المنصة') + '</span></h2></div>'
+    var top = Math.max(max(rt.list.map(function (e) { return e.ratio })), 1), H = 118
+    var h = function (r) { return Math.max(Math.round(r / top * H), 3) }
+    var cols = rt.list.map(function (e) {
+      return '<div class="rc"><b>' + L(Math.round(e.ratio * 100) + '%') + '</b><i style="height:' + h(e.ratio) + 'px"></i></div>'
+    }).join('')
+    var names = rt.list.map(function (e) {
+      return '<div><b>' + esc(e.name) + '</b><small>' + L(num(e.subs) + ' ÷ ' + num(e.students)) + '</small></div>'
+    }).join('')
+    return '<div class="card rto">' + title + ' <span>كل قنوات الفرع ÷ طلابه الحاليون · المشتركون ' + esc(fmtMonth(s.cur)) + ' والطلاب سحب ' + esc(fmtDate(rt.date)) + '</span></h2>' +
+      '<div class="rch"><em class="r100" style="bottom:' + h(1) + 'px"><span><b>' + L('100%') + '</b><br>مشترك لكل طالب</span></em>' + cols + '</div>' +
+      '<div class="rnm">' + names + '</div>' +
+      (rt.out.length ? '<p class="rno">' + esc(rt.out.join('، ')) + ': ليس في تقرير أعداد الطلاب</p>' : '') + '</div>'
   }
 
   /* ------------------------------------------------------------ 6 · السنترال: كل تحويلات الفروع */
@@ -687,6 +744,166 @@
       '<div class="col">' + weakCard + vmCard + '</div></section>'
   }
 
+  /* ------------------------------------------------------------ 8 · الخطط العلاجية (القواعد نفسها في src/data/remedial.ts: عدّلهما معًا) */
+  // الحالة من خانة «التنفيذ» وحدها. نسبة التنفيذ لكل فرع = المنفّذ ÷ (المنفّذ + غير المنفّذ)؛ «بدون خطة» و«بدون خانة»
+  // بجانبها لا داخلها، ولا متوسط للشركة. «لا خطة مقروءة»: لا مرحلة ولا صف للفرع (الشاشة لا تقرأ سجل الملفات وروابطه)
+  var REM_STATE = { 'not-started': ['warn', 'لم تبدأ'], 'in-progress': ['sky', 'جارية'], complete: ['ok', 'مكتملة'], 'no-rows': ['none', 'لا صفوف'], unread: ['none', 'لا خطة مقروءة'] }
+  function remCount(rows) {
+    var c = { done: 0, notDone: 0, noPlan: 0, noCheckbox: 0 }
+    rows.forEach(function (r) { if (r.s === 'done') c.done++; else if (r.s === 'not-done') c.notDone++; else if (r.s === 'no-plan') c.noPlan++; else c.noCheckbox++ })
+    return c
+  }
+  function remRate(c) { var d = c.done + c.notDone; return d ? c.done / d : null }
+  function remState(c, read) { return !read ? 'unread' : c.done + c.notDone === 0 ? 'no-rows' : c.done === 0 ? 'not-started' : c.notDone === 0 ? 'complete' : 'in-progress' }
+  /** only obvious spelling variants fold together (causeKey in remedial.ts); a compound cause joined by « / » stays one cause */
+  function causeKey(s) {
+    return String(s).replace(/اإل/g, 'الإ').replace(/األ/g, 'الأ').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+      .replace(/\s*\/\s*/g, ' / ').replace(/\s+/g, ' ').trim()
+  }
+  function remCauses(rows) {
+    var m = {}, keys = []
+    rows.forEach(function (r) {
+      if (!r.c) return
+      var k = causeKey(r.c)
+      if (!k) return
+      var e = m[k]
+      if (!e) { e = m[k] = { rows: [], names: {}, br: {} }; keys.push(k) }
+      e.rows.push(r)
+      e.br[r.b] = 1
+      var n = String(r.c).replace(/\s+/g, ' ').trim()
+      e.names[n] = (e.names[n] || 0) + 1
+    })
+    return keys.map(function (k) {
+      var e = m[k], names = Object.keys(e.names).sort(function (a, b) { return e.names[b] - e.names[a] })
+      return { name: names[0], rows: e.rows.length, branches: Object.keys(e.br).length, counts: remCount(e.rows) }
+    }).sort(function (a, b) { return b.branches - a.branches || b.rows - a.rows })
+  }
+  function view8() {
+    var R = data.remRows, S = data.remStages
+    if (!R.length && !S.length) return empty('لم تُقرأ ملفات الخطط العلاجية بعد', 'تظهر هنا خطط الفروع لأسباب الانسحاب بعد أول قراءة لملفاتها.')
+    var plans = Object.keys(BRANCH).map(function (slug) {
+      var st = S.filter(function (s) { return s.b === slug }), rows = R.filter(function (r) { return r.b === slug })
+      var c = remCount(rows)
+      return { slug: slug, name: BRANCH[slug], stages: st.length, empty: st.filter(function (s) { return s.e === true }).length, c: c, rate: remRate(c), state: remState(c, st.length > 0 || rows.length > 0) }
+    })
+    var all = remCount(R)
+    var read = plans.filter(function (p) { return p.state !== 'unread' })
+    var unread = plans.filter(function (p) { return p.state === 'unread' })
+    var causes = remCauses(R), repeated = causes.filter(function (c) { return c.branches >= 2 })
+    var decide = causes.filter(function (c) { return c.branches >= 3 && c.counts.done === 0 })
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero"><span>فروع لها خطة مقروءة</span><b>' + read.length + of(plans.length) + '</b><small>' + (unread.length ? 'بلا خطة مقروءة: ' + esc(unread.map(function (p) { return p.name }).join('، ')) : 'كل الفروع لها خطة مقروءة') + '</small></div>' +
+      '<div class="k"><span>صفوف منفّذة</span><b class="pos">' + num(all.done) + '</b><small>خانة «التنفيذ» محددة</small></div>' +
+      '<div class="k"><span>صفوف غير منفّذة</span><b class="wrn">' + num(all.notDone) + '</b><small>فيها إجراءات والخانة غير محددة</small></div>' +
+      '<div class="k"><span>صفوف بدون خطة</span><b class="' + (all.noPlan ? 'neg' : 'pos') + '">' + num(all.noPlan) + '</b><small>' + (all.noCheckbox ? 'و' + num(all.noCheckbox) + ' بدون خانة تنفيذ' : 'سبب أو مشكلة بلا إجراءات') + '</small></div>' +
+      '<div class="k"><span>أسباب تحتاج قرارًا</span><b class="' + (decide.length ? 'neg' : 'pos') + '">' + decide.length + '</b><small>في 3 فروع فأكثر بلا أي تنفيذ</small></div></section>'
+    plans.sort(function (a, b) {
+      var ra = a.rate === null ? -1 : a.rate, rb = b.rate === null ? -1 : b.rate
+      return (a.state === 'unread') - (b.state === 'unread') || rb - ra || (b.c.done + b.c.notDone) - (a.c.done + a.c.notDone)
+    })
+    var rows = plans.map(function (p) {
+      var st = REM_STATE[p.state], d = p.c.done + p.c.notDone
+      return '<div class="rrow rem"><span class="n">' + esc(p.name) + '</span>' +
+        '<span class="tw">' + (p.state === 'unread' ? '' : '<span class="tr">' + (p.rate ? '<i class="ok" style="width:' + Math.max(p.rate * 100, 1.5).toFixed(1) + '%"></i>' : '') + '</span>') + '</span>' +
+        '<b>' + (p.rate === null ? '<span class="g-none">—</span>' : L(Math.round(p.rate * 100) + '%')) + '</b>' +
+        '<small>' + (d ? num(p.c.done) + ' من ' + num(d) : p.state === 'unread' ? '' : 'لا صفوف') + '</small>' +
+        '<span class="np' + (p.c.noPlan ? ' g-bad' : '') + '">' + (p.state === 'unread' ? '' : num(p.c.noPlan)) + '</span>' +
+        '<span class="ps"><i class="chip ' + st[0] + '">' + st[1] + '</i></span></div>'
+    }).join('')
+    var shown = repeated.slice(0, 6)
+    var crows = shown.map(function (c) {
+      var dec = c.branches >= 3 && c.counts.done === 0
+      return '<li><div class="nm"><b>' + esc(c.name) + '</b><span>' + cnt(c.rows, 'صف واحد', 'صفان', 'صفوف', 'صفًا') + ' · منفّذ ' + num(c.counts.done) + (c.counts.noPlan ? ' · بدون خطة ' + num(c.counts.noPlan) : '') + '</span></div>' +
+        (dec ? '<i class="chip bad">تحتاج قرارًا</i>' : '') + '<span class="v">' + c.branches + '<small>' + (c.branches > 2 && c.branches < 11 ? 'فروع' : 'فرعًا') + '</small></span></li>'
+    }).join('')
+    var causeCard = '<div class="card"><h2>الأسباب المتكررة <span>في فرعين فأكثر · بعدد الفروع</span></h2>' +
+      (shown.length ? '<ul class="list rc8">' + crows + (repeated.length > shown.length ? '<li class="more">و' + (repeated.length - shown.length) + ' أسباب أخرى في صفحة الخطط العلاجية</li>' : '') + '</ul>' : '<p class="none">لا سبب تكرر في فرعين أو أكثر</p>') + '</div>'
+    return header() + kpis +
+      '<section class="body b8"><div class="card big"><h2>تنفيذ الخطط في كل فرع <span>من الأعلى تنفيذًا · حسب خانة «التنفيذ» في ملف الفرع</span></h2>' +
+      '<div class="rrow rem rh"><span class="n">الفرع</span><span class="tw">نسبة التنفيذ</span><b></b><small>المنفّذ من</small><span class="np">بدون خطة</span><span class="ps">حالة الخطة</span></div>' +
+      '<div class="bars">' + rows + '</div>' +
+      '<p class="note one">نسبة التنفيذ = المنفّذ ÷ (المنفّذ + غير المنفّذ). صفوف «بدون خطة» و«بدون خانة» لا تدخل فيها، ولا يوجد متوسط للشركة.</p></div>' +
+      causeCard + '</section>'
+  }
+
+  /* ------------------------------------------------------------ 9 · المنافسون (القواعد نفسها في src/data/competitors.ts: عدّلهما معًا) */
+  // القيم كما كُتبت في ملف الدراسة؛ ألوان القرب ثلاثة مفحوصة لعمى الألوان على بطاقة الشاشة الداكنة
+  var PROX = [['near', 'قريبة'], ['mid', 'نوعًا ما قريبة'], ['far', 'بعيدة'], ['closed', 'مغلقة مؤقتًا']]
+  function tally(list, pick) {
+    var m = {}, keys = []
+    list.forEach(function (c) {
+      var seen = {}
+      ;(pick(c) || []).forEach(function (t) { if (seen[t]) return; seen[t] = 1; if (!m[t]) { m[t] = []; keys.push(t) } m[t].push(c.name) })
+    })
+    return keys.map(function (t) { return { label: t, names: m[t] } }).sort(function (a, b) { return b.names.length - a.names.length || a.label.localeCompare(b.label, 'ar') })
+  }
+  function study(all) {
+    var baseline = all.filter(function (c) { return c.baseline })[0] || null
+    var rivals = all.filter(function (c) { return !c.baseline && !c.suggested })
+    var known = all.filter(function (c) { return !c.suggested })
+    var priced = rivals.filter(function (c) { return c.feesMin != null && c.feesMax != null })
+    var lowest = null, highest = null
+    priced.forEach(function (c) { if (!lowest || c.feesMin < lowest.feesMin) lowest = c; if (!highest || c.feesMax > highest.feesMax) highest = c })
+    var byProx = {}
+    PROX.forEach(function (p) { byProx[p[0]] = rivals.filter(function (c) { return c.proxKey === p[0] }) })
+    return {
+      baseline: baseline, rivals: rivals, suggested: all.filter(function (c) { return c.suggested }), priced: priced, lowest: lowest, highest: highest, byProx: byProx,
+      noProx: rivals.filter(function (c) { return !c.proxKey }), accred: tally(known, function (c) { return c.accredTags }),
+      strengths: tally(rivals, function (c) { return c.strengthThemes }), weaknesses: tally(rivals, function (c) { return c.weaknessThemes }),
+      offers: { yes: rivals.filter(function (c) { return c.offers3 === 'yes' }), no: rivals.filter(function (c) { return c.offers3 === 'no' }), unknown: rivals.filter(function (c) { return !c.offers3 }) }
+    }
+  }
+  function view9() {
+    var all = data.competitors
+    if (!all.length) return empty('لم تُقرأ دراسة المنافسين بعد', 'تظهر هنا بعد قراءة ملف الدراسة إلى المنصة.')
+    var s = study(all), nr = s.rivals.length
+    var cognia = s.accred.filter(function (t) { return t.label === 'Cognia' })[0]
+    var near = s.byProx.near.length + s.byProx.mid.length
+    var kpis = '<section class="kpis">' +
+      '<div class="k hero"><span>منافسون مقروءون</span><b>' + nr + '</b><small>' + (s.suggested.length ? 'و' + cnt(s.suggested.length, 'مدرسة مقترحة', 'مدرستان مقترحتان', 'مدارس مقترحة', 'مدرسة مقترحة') + ' بلا بيانات' : 'من ملف الدراسة') + '</small></div>' +
+      '<div class="k"><span>قريبة من الأندلس</span><b>' + near + '</b><small>' + (s.byProx.mid.length ? 'منها ' + s.byProx.mid.length + ' نوعًا ما' : 'حسب الملف') + '</small></div>' +
+      '<div class="k"><span>نطاق الرسوم المسجّلة</span><b class="rng">' + (s.lowest ? L(num(s.lowest.feesMin) + ' – ' + num(s.highest.feesMax)) : '—') + '</b><small>' + s.priced.length + ' من ' + nr + ' سُجّلت رسومها</small></div>' +
+      '<div class="k"><span>اعتماد Cognia</span><b>' + (cognia ? cognia.names.length : 0) + '</b><small>عدد المدارس التي تذكره</small></div>' +
+      '<div class="k"><span>عروض وخصومات</span><b>' + s.offers.yes.length + '</b><small>' + s.offers.no.length + ' بلا عروض' + (s.offers.unknown.length ? ' · ' + s.offers.unknown.length + ' لم تُسجَّل' : '') + '</small></div></section>'
+    // الرسوم: من أدنى رقم إلى أعلى رقم كما في الملف، من الأقل، على محور من اليمين (الأقل) إلى اليسار
+    var fr = s.priced.slice().sort(function (a, b) { return a.feesMin - b.feesMin || a.feesMax - b.feesMax })
+    var fees
+    if (fr.length) {
+      var lo = Math.floor(Math.min.apply(null, fr.map(function (c) { return c.feesMin })) / 10000) * 10000
+      var hi = Math.ceil(Math.max.apply(null, fr.map(function (c) { return c.feesMax })) / 10000) * 10000
+      if (hi === lo) hi = lo + 10000
+      var at = function (n) { return ((n - lo) / (hi - lo) * 100).toFixed(2) }
+      var ticks = []
+      for (var t = lo; t <= hi; t += 10000) ticks.push(t)
+      var grid = ticks.map(function (t) { return '<em style="right:' + at(t) + '%"></em>' }).join('')
+      var shownF = fr.length > 12 ? fr.slice(0, 12) : fr
+      fees = '<div class="frow fax"><span class="n"></span><span class="ft">' + ticks.map(function (t) { return '<span style="right:' + at(t) + '%">' + num(t) + '</span>' }).join('') + '</span><small></small></div>' +
+        '<div class="bars">' + shownF.map(function (c) {
+          return '<div class="frow"><span class="n">' + esc(c.name) + '</span><span class="ft">' + grid + '<i class="px-' + (c.proxKey === 'near' || c.proxKey === 'mid' ? c.proxKey : 'far') + '" style="right:' + at(c.feesMin) + '%;width:' + Math.max(+at(c.feesMax) - +at(c.feesMin), 1.2).toFixed(2) + '%"></i></span>' +
+            '<small>' + (c.feesMin === c.feesMax ? L(num(c.feesMin)) : 'من ' + L(num(c.feesMin)) + ' إلى ' + L(num(c.feesMax))) + '</small></div>'
+        }).join('') + '</div>'
+      var unpriced = s.rivals.filter(function (c) { return c.feesMin == null }).concat(s.baseline && s.baseline.feesMin == null ? [s.baseline] : [])
+      fees += keys([['px-near', 'قريبة من الأندلس'], ['px-mid', 'نوعًا ما قريبة'], ['px-far', 'بعيدة أو غير محدّدة']]) +
+        (unpriced.length || fr.length > shownF.length ? '<p class="note one">' + (unpriced.length ? 'لم تُسجَّل رسوم: ' + esc(unpriced.map(function (c) { return c.name }).join('، ')) : '') + (fr.length > shownF.length ? (unpriced.length ? ' · ' : '') + 'و' + (fr.length - shownF.length) + ' مدارس أخرى في صفحة المنافسين' : '') + '</p>' : '')
+    } else fees = '<p class="none soft">لم تُسجَّل رسوم أي مدرسة في الملف</p>'
+    var proxRows = PROX.concat([['none', 'لم يُحدَّد']]).map(function (p) {
+      var list = p[0] === 'none' ? s.noProx : s.byProx[p[0]]
+      if (!list.length) return ''
+      return '<li><i class="chip px-' + p[0] + '">' + p[1] + ' · ' + list.length + '</i><span>' + esc(list.map(function (c) { return c.name }).join('، ')) + '</span></li>'
+    }).join('')
+    var themes = function (rows, cls) {
+      if (!rows.length) return '<p class="none soft">لم يُجمع</p>'
+      var top = rows.slice(0, 4)
+      return '<div class="thm">' + top.map(function (r) {
+        return '<div class="tr3"><div class="tl"><span class="n">' + esc(r.label) + '</span><b>' + r.names.length + '<small> من ' + nr + '</small></b></div><span class="tr"><i class="' + cls + '" style="width:' + Math.max(r.names.length / Math.max(nr, 1) * 100, 3).toFixed(1) + '%"></i></span></div>'
+      }).join('') + '</div>'
+    }
+    return header() + kpis +
+      '<section class="body b9"><div class="card big"><h2>الرسوم الدراسية <span>من أدنى رقم إلى أعلى رقم كما في الملف · مرتبة من الأقل · اللون للقرب من مدارس الأندلس</span></h2>' + fees + '</div>' +
+      '<div class="col"><div class="card"><h2>القرب من الأندلس <span>كما صنّفه الملف</span></h2><ul class="prox">' + proxRows + '</ul></div>' +
+      '<div class="card sw"><div class="half"><h2>نقاط القوة المتكررة</h2>' + themes(s.strengths, 'ok') + '</div><div class="half"><h2>نقاط الضعف المتكررة</h2>' + themes(s.weaknesses, 'bad') + '</div></div></div></section>'
+  }
+
   /* ------------------------------------------------------------ render and control */
   function footer() {
     var st = online ? 'آخر تحديث ' + timeFmt.format(lastOk || new Date()) : 'غير متصل · آخر تحديث ' + (lastOk ? timeFmt.format(lastOk) : '—')
@@ -694,7 +911,7 @@
       '<span class="state' + (online ? '' : ' off') + '" id="state">' + esc(st) + '</span></div>'
   }
   function render() {
-    var body = [view1, view2, view3, view4, view5, view6, view7][view - 1]()
+    var body = [view1, view2, view3, view4, view5, view6, view7, view8, view9][view - 1]()
     app.innerHTML = body + footer()
   }
   function setView(v) {
@@ -735,9 +952,9 @@
     }
   }
 
-  /* keys: 1-7 pick a view, arrows step through them (left = next, as the views run right to left),
+  /* keys: 1-9 pick a view, arrows step through them (left = next, as the views run right to left),
      OK (or down) opens the views list; in it up/down move, OK picks, back closes */
-  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 55: 7, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6, 103: 7 }
+  var KEYS = { 49: 1, 50: 2, 51: 3, 52: 4, 53: 5, 54: 6, 55: 7, 56: 8, 57: 9, 97: 1, 98: 2, 99: 3, 100: 4, 101: 5, 102: 6, 103: 7, 104: 8, 105: 9 }
   var listTimer = null
   function listEl() { return document.getElementById('vlist') }
   function listItems() { var l = listEl(); return l ? [].slice.call(l.querySelectorAll('.vi')) : [] }
@@ -776,7 +993,7 @@
   document.addEventListener('keydown', function (e) {
     if (!started) return
     var k = e.key, code = e.keyCode
-    var n = /^[1-7]$/.test(k) ? +k : KEYS[code]
+    var n = /^[1-9]$/.test(k) ? +k : KEYS[code]
     if (n) { e.preventDefault(); closeList(); setView(n); return }
     if (listOpen()) {
       if (k === 'ArrowDown' || code === 40) { e.preventDefault(); moveFocus(1); return }

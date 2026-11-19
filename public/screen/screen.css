@@ -388,3 +388,95 @@ i.sm { background: #55557a; }
 .kpis.k8 .gw b { font-size: 22px; bottom: -4px; }
 .kpis.k8 .k small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .kpis.k8 .hero > small { display: flex; }
+
+/* 1 · «فروع تحتاج متابعة» by withdrawal only: the count of withdrawn students beside the rate */
+.watch .wv { display: flex; align-items: center; white-space: nowrap; }
+.watch .wv small { font-size: 17px; color: var(--mut); line-height: 1.25; }
+
+/* 5 · قنوات الواتساب: slimmer indicators, the two channel lists, then a third row with
+   subscribers against students per branch (columns, tallest first, a dashed line at one subscriber per student) */
+.kpis.k5 { height: 150px; }
+.kpis.k5 .k { padding: 18px 26px; }
+.kpis.k5 .k > b { font-size: 46px; margin-top: 10px; }
+.kpis.k5 .hero > b { font-size: 54px; }
+.kpis.k5 .k small { font-size: 17px; line-height: 1.3; }
+.b5 { -webkit-box-orient: vertical; flex-direction: column; }
+.b5 > .w2 { -webkit-box-flex: 1; flex: 1; min-height: 0; display: flex; }
+.b5 > .w2 > .card { -webkit-box-flex: 1; flex: 1; padding: 20px 28px; }
+.b5 > .w2 > .card:first-child { margin-left: 18px; }
+.b5 > .w2 h2 { margin-bottom: 8px; }
+.body.b5 > .card.rto { -webkit-box-flex: 0; flex: 0 0 auto; height: 292px; margin: 18px 0 0; padding: 20px 28px 16px; position: relative; }
+.body.b5 > .card.rto.off { height: auto; padding: 18px 28px; }
+.body.b5 > .card.rto.off h2 { margin-bottom: 0; }
+.rch { position: relative; display: flex; align-items: flex-end; height: 150px; flex-shrink: 0; border-bottom: 2px solid var(--line); }
+.rc { -webkit-box-flex: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; z-index: 1; }
+.rc b { font-size: 21px; font-weight: 800; line-height: 1.2; margin-bottom: 4px; padding: 0 6px; border-radius: 6px; background: var(--card); white-space: nowrap; }
+.rc i { display: block; width: 58px; border-radius: 10px 10px 0 0; background: #25D366; }
+.rch, .rnm { padding-left: 128px; }
+.r100 { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--gold); font-style: normal; z-index: 0; }
+.r100 > span { position: absolute; left: 0; bottom: 5px; width: 120px; text-align: left; font-size: 14px; color: var(--gold); line-height: 1.25; white-space: nowrap; }
+.r100 b { font-size: 18px; font-weight: 800; }
+.rnm { display: flex; margin-top: 8px; flex-shrink: 0; }
+.rnm > div { -webkit-box-flex: 1; flex: 1; min-width: 0; text-align: center; }
+.rnm b { display: block; font-size: 19px; font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rnm small { display: block; font-size: 15px; color: var(--mut); line-height: 1.3; white-space: nowrap; }
+.rno { position: absolute; top: 26px; left: 28px; font-size: 16px; color: var(--mut); line-height: 1.25; white-space: nowrap; }
+
+/* 8 · الخطط العلاجية: one line per branch (rate bar, the executed count, rows without a plan, the plan state), then the repeated causes */
+.b8 .big { -webkit-box-flex: 1.6; flex: 1.6; }
+.rem .np { width: 100px; flex-shrink: 0; font-size: 20px; font-weight: 800; text-align: center; white-space: nowrap; }
+.rem .ps { width: 150px; flex-shrink: 0; text-align: left; white-space: nowrap; }
+.rem .ps .chip { font-size: 16px; padding: 2px 12px; }
+.rrow.rem.rh .np, .rrow.rem.rh .ps { font-size: 15px; font-weight: 700; color: var(--mut); }
+.rrow.rem.rh .tw { font-size: 15px; font-weight: 700; color: var(--mut); white-space: nowrap; }
+.chip.none { background: var(--track); color: var(--mut); }
+.b8 .note.one { margin-top: 12px; }
+.rc8 { -webkit-box-pack: start; justify-content: flex-start; }
+.rc8 li { padding: 11px 0; }
+.rc8 .nm b { font-size: 20px; line-height: 1.3; }
+.rc8 .nm span { display: block; font-size: 15px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc8 .chip { font-size: 14px; padding: 2px 10px; margin-right: 10px; flex-shrink: 0; }
+.rc8 .v { font-size: 30px; line-height: 1; margin-right: 14px; min-width: 70px; text-align: left; white-space: nowrap; flex-shrink: 0; }
+.rc8 .v small { font-size: 14px; font-weight: 700; color: var(--mut); margin-right: 4px; }
+.none.soft { color: var(--mut); }
+
+/* 9 · المنافسون: fee ranges on one axis (lowest on the right), proximity, and the repeated strengths and weaknesses.
+   Proximity colours are the reference palette's first three slots, checked for colour blindness on the dark card
+   (the portal's orange/gold pair cannot be told apart there). */
+.k > b.rng { font-size: 34px; white-space: nowrap; }
+.b9 .big { -webkit-box-flex: 1.3; flex: 1.3; }
+.b9 .col > .card { -webkit-box-flex: 1; flex: 1; }
+.frow { display: flex; align-items: center; line-height: 1.25; }
+.frow .n { width: 210px; flex-shrink: 0; font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frow .ft { position: relative; display: block; -webkit-box-flex: 1; flex: 1; min-width: 0; height: 30px; margin: 0 14px; border-radius: 8px; background: rgba(36, 36, 74, .55); }
+.frow .ft em { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.frow .ft i { position: absolute; top: 7px; bottom: 7px; border-radius: 99px; }
+.frow small { width: 200px; flex-shrink: 0; font-size: 16px; color: var(--mut); text-align: left; white-space: nowrap; }
+.frow.fax { margin-bottom: 4px; }
+.frow.fax .ft { height: 22px; background: transparent; }
+.frow.fax .ft span { position: absolute; top: 0; font-size: 15px; color: var(--mut); line-height: 1.3; white-space: nowrap; -webkit-transform: translateX(50%); transform: translateX(50%); }
+.ft i.px-near, .keys em.px-near { background: #d95926; }
+.ft i.px-mid, .keys em.px-mid { background: #199e70; }
+.ft i.px-far, .keys em.px-far { background: #3987e5; }
+.chip.px-near { background: rgba(217, 89, 38, .22); color: #ff9e78; }
+.chip.px-mid { background: rgba(25, 158, 112, .22); color: #52d6a6; }
+.chip.px-far { background: rgba(57, 135, 229, .22); color: #8dbcf6; }
+.chip.px-closed, .chip.px-none { background: var(--track); color: var(--mut); }
+.b9 .note.one { margin-top: 8px; }
+.prox { list-style: none; display: flex; flex-direction: column; justify-content: space-around; -webkit-box-flex: 1; flex: 1; }
+.prox li { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.prox li:last-child { border: 0; }
+.prox .chip { flex-shrink: 0; width: 176px; text-align: center; font-size: 16px; margin-left: 14px; }
+.prox li > span { min-width: 0; font-size: 18px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card.sw { -webkit-box-orient: horizontal; flex-direction: row; }
+.card.sw .half { -webkit-box-flex: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.card.sw .half + .half { margin-right: 24px; padding-right: 24px; border-right: 1px solid var(--line); }
+.thm { -webkit-box-flex: 1; flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+.tl { display: flex; align-items: baseline; }
+.tl .n { -webkit-box-flex: 1; flex: 1; min-width: 0; font-size: 19px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl b { flex-shrink: 0; font-size: 21px; font-weight: 800; line-height: 1.3; margin-right: 10px; white-space: nowrap; }
+.tl b small { font-size: 14px; font-weight: 400; color: var(--mut); }
+.tr3 .tr { display: block; height: 8px; margin-top: 7px; }
+.b9 .col > .card:first-child { -webkit-box-flex: 1.2; flex: 1.2; }
+.b9 .col > .card.sw { -webkit-box-flex: 0.8; flex: 0.8; }
+.card.sw h2 { margin-bottom: 8px; }

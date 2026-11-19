@@ -53,9 +53,12 @@ create or replace function public.editor_collection(c text) returns boolean
 -- ما تقرؤه حسابات «شاشة» (للقراءة فقط) فوق المجموعات العامة، ولا شيء غيره.
 -- csrPlans لعرض «المسؤولية المجتمعية» وindicators لعرض «رضا العملاء وجودة التواصل» في شاشة العرض (بإذن مدير المنصة)
 -- pbxBranchReports وpbxOfficers لعرض «السنترال · الفروع» وpbxReports لعرض «السنترال · مسؤولو التواصل» في شاشة العرض (طلب مدير المنصة)
+-- remedialStages وremedialRows وremedialSync لعرض «الخطط العلاجية»، وcompetitors وcompetitorsMeta لعرض «المنافسون» (طلب مدير المنصة).
+-- remedialFiles ليست منها عمدًا: فيها روابط ملفات الفروع، والعرض لا يحتاجها
 create or replace function public.screen_collection(c text) returns boolean
   language sql immutable
-  as $$ select c in ('studentCounts', 'csrPlans', 'indicators', 'pbxBranchReports', 'pbxOfficers', 'pbxReports') $$;
+  as $$ select c in ('studentCounts', 'csrPlans', 'indicators', 'pbxBranchReports', 'pbxOfficers', 'pbxReports',
+                     'remedialStages', 'remedialRows', 'remedialSync', 'competitors', 'competitorsMeta') $$;
 
 create or replace function public.my_role() returns text
   language sql stable security definer set search_path = public
