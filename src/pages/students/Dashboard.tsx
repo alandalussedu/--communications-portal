@@ -288,10 +288,10 @@ function Bars({ counts, branch, onPick, preliminary, className }: { counts: Stud
 
   return (
     <Card className={cn("flex flex-col", className)}>
-      <CardHead
-        title="مقارنة الفروع"
-        hint={`${hint[metric]} · اضغط فرعًا لتصفية الصفحة`}
-        actions={
+      {/* the header keeps its height whichever metric is picked: the hint is one line, cut if long */}
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[18px] font-extrabold leading-snug">مقارنة الفروع</h2>
           <div role="radiogroup" aria-label="المؤشر" className="flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-muted p-1 [scrollbar-width:none]">
             {METRICS.map((m) => (
               <button
@@ -300,14 +300,15 @@ function Bars({ counts, branch, onPick, preliminary, className }: { counts: Stud
                 role="radio"
                 aria-checked={metric === m.key}
                 onClick={() => setMetric(m.key)}
-                className={cn("h-8 shrink-0 rounded-[9px] px-3 text-[13px] transition-colors", metric === m.key ? "bg-card font-extrabold text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                className={cn("h-8 w-[4.25rem] shrink-0 rounded-[9px] px-1 text-center text-[13px] transition-colors", metric === m.key ? "bg-card font-extrabold text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >
                 {m.label}
               </button>
             ))}
           </div>
-        }
-      />
+        </div>
+        <p className="mt-1 truncate text-[13.5px] leading-5 text-muted-foreground" title={hint[metric]}>{hint[metric]} · اضغط فرعًا لتصفية الصفحة</p>
+      </div>
       <ul className="flex flex-1 flex-col justify-around gap-1">
         {list.map((b, i) => {
           const on = branch === b.name
@@ -327,7 +328,7 @@ function Bars({ counts, branch, onPick, preliminary, className }: { counts: Stud
             const g = b.growth
             bar =
               g === null ? (
-                <span className="text-[12px] text-muted-foreground">غير متاح</span>
+                <span className="flex h-3.5 items-center text-[12px] leading-none text-muted-foreground">غير متاح</span>
               ) : (
                 <span className="relative block h-3.5">
                   <span className="absolute inset-y-[-3px] start-1/2 w-px bg-border" />
@@ -357,7 +358,7 @@ function Bars({ counts, branch, onPick, preliminary, className }: { counts: Stud
                 onClick={() => onPick(b.name)}
                 aria-pressed={on}
                 className={cn(
-                  "grid w-full grid-cols-[5.5rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-xl px-2 py-1.5 text-start transition-[background-color,opacity] hover:bg-muted/70 sm:grid-cols-[7rem_minmax(0,1fr)_8.5rem]",
+                  "grid w-full grid-cols-[5.5rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-xl px-2 py-1.5 text-start transition-[background-color,opacity] hover:bg-muted/70 sm:grid-cols-[7rem_minmax(0,1fr)_11.75rem]",
                   on && "bg-secondary ring-1 ring-primary/25",
                   dim && "opacity-55",
                 )}
@@ -370,25 +371,32 @@ function Bars({ counts, branch, onPick, preliminary, className }: { counts: Stud
                 </span>
                 <span className="min-w-0">{bar}</span>
                 <span className="flex items-baseline justify-end gap-2">
-                  <b className="num text-[14px]">{value}</b>
-                  {sub && <span className="num hidden text-[12px] text-muted-foreground sm:inline">{sub}</span>}
+                  <span className="num hidden w-[7.5rem] truncate text-start text-[12px] text-muted-foreground sm:inline-block">{sub ?? ""}</span>
+                  <b className="num w-[3.75rem] shrink-0 text-end text-[14px]">{value}</b>
                 </span>
               </button>
             </li>
           )
         })}
       </ul>
-      {metric === "occupancy" && (
-        <Keys items={[{ cls: "bg-ok", label: "مرتفع: 85% فأكثر" }, { cls: "bg-sky", label: "جيد: من 70% إلى 85%" }, { cls: "bg-warn", label: "منخفض: أقل من 70%" }, { cls: "bg-muted ring-1 ring-inset ring-border", label: "طول الشريط = الطاقة التشغيلية" }]} />
-      )}
-      {metric === "withdrawalRate" && <Keys items={[{ cls: "bg-ok", label: "جيد: حتى 8%" }, { cls: "bg-warn", label: "متابعة: من 8% إلى 12%" }, { cls: "bg-bad", label: "مرتفع: فوق 12%" }]} />}
+      <Keys
+        items={
+          metric === "occupancy"
+            ? [{ cls: "bg-ok", label: "مرتفع: 85% فأكثر" }, { cls: "bg-sky", label: "جيد: من 70% إلى 85%" }, { cls: "bg-warn", label: "منخفض: أقل من 70%" }, { cls: "bg-muted ring-1 ring-inset ring-border", label: "طول الشريط = الطاقة التشغيلية" }]
+            : metric === "withdrawalRate"
+              ? [{ cls: "bg-ok", label: "جيد: حتى 8%" }, { cls: "bg-warn", label: "متابعة: من 8% إلى 12%" }, { cls: "bg-bad", label: "مرتفع: فوق 12%" }]
+              : metric === "growth"
+                ? [{ cls: "bg-ok", label: "زيادة عن العام الماضي" }, { cls: "bg-bad", label: "انخفاض عن العام الماضي" }]
+                : [{ cls: metric === "current" ? "bg-primary" : "bg-gold", label: metric === "current" ? "الطلاب الحاليون في الفرع" : "الطلاب الجدد في الفرع" }]
+        }
+      />
     </Card>
   )
 }
 
 function Keys({ items }: { items: { cls: string; label: string }[] }) {
   return (
-    <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
+    <p className="mt-4 flex min-h-[4.25rem] flex-wrap content-start gap-x-4 gap-y-1 text-[12.5px] leading-5 text-muted-foreground sm:min-h-5">
       {items.map((k) => (
         <span key={k.label} className="inline-flex items-center gap-1.5">
           <span className={cn("h-2.5 w-2.5 rounded-[3px]", k.cls)} />
