@@ -101,7 +101,7 @@ export function CalendarPage() {
     <>
       <PageHeader
         eyebrow={`العام الدراسي ${sy}-${sy + 1}`}
-        title="رحلة التواصل"
+        title="تقويم التواصل"
         description="المواعيد والأحداث المهمة لإدارة التواصل المؤسسي والفروع على مدار العام الدراسي."
         actions={
           canEdit ? (
@@ -244,7 +244,7 @@ export function CalendarPage() {
             <>
               <SheetHeader className="pe-8 text-start">
                 <SheetTitle className="text-start text-[22px] font-bold">{panel?.kind === "edit" ? "تعديل الحدث" : "إضافة حدث"}</SheetTitle>
-                <SheetDescription className="text-start text-[15px]">يظهر الحدث لكل من يفتح المنصة في تبويب رحلة التواصل.</SheetDescription>
+                <SheetDescription className="text-start text-[15px]">يظهر الحدث لكل من يفتح المنصة في تبويب تقويم التواصل.</SheetDescription>
               </SheetHeader>
               {panel && (panel.kind === "edit" || panel.kind === "new") && (
                 <EventForm key={panel.kind === "edit" ? panel.ev.id : panel.date} item={panel.kind === "edit" ? panel.ev : undefined} date={panel.kind === "new" ? panel.date : undefined} onDone={() => setPanel(null)} />
@@ -771,7 +771,7 @@ export function UpcomingStrip({ className = "mt-5" }: { className?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3.5">
         <h2 id="upcoming-title" className="flex items-center gap-2 text-[19px] font-bold">
           <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
-          القادم في رحلة التواصل
+          القادم في تقويم التواصل
         </h2>
         <button type="button" onClick={() => go({ page: "calendar" })} className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-bold text-primary hover:underline">
           التقويم كاملًا

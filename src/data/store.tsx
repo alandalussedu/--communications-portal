@@ -541,10 +541,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const now = new Date().toISOString()
         const { id, ...body } = ev
         await db.doc(`events/${id}`).set({ ...body, createdAt: ev.createdAt ?? now, updatedAt: now })
-      }, `حُفظ «${ev.title}» في رحلة التواصل`),
+      }, `حُفظ «${ev.title}» في تقويم التواصل`),
     [write],
   )
-  const deleteEvent = useCallback((id: string) => write((db) => db.doc(`events/${id}`).delete(), "حُذف الحدث من رحلة التواصل"), [write])
+  const deleteEvent = useCallback((id: string) => write((db) => db.doc(`events/${id}`).delete(), "حُذف الحدث من تقويم التواصل"), [write])
 
   const saveComplaintReports = useCallback(
     (items: { report: ComplaintReport; file: { name: string; type: string; b64: string } }[]) =>

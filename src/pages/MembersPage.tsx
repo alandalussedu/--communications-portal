@@ -286,7 +286,7 @@ const ROUTES: { value: string; label: string }[] = [
   { value: "", label: "الصفحة الرئيسية" },
   { value: "indicators", label: "الأداء والتطوير" },
   { value: "remedial", label: "الخطط العلاجية" },
-  { value: "calendar", label: "رحلة التواصل" },
+  { value: "calendar", label: "تقويم التواصل" },
   { value: "library", label: "المكتبة" },
   { value: "social", label: "التواصل الاجتماعي" },
   { value: "csr", label: "المسؤولية المجتمعية" },

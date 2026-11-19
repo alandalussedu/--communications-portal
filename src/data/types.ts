@@ -442,7 +442,7 @@ export type ConnectionState =
 /* ------------------------------------------------------------ communication journey (calendar) */
 export type EventType = "branch-meeting" | "indicator" | "deadline" | "campaign" | "workshop" | "holiday"
 export type EventRepeat = { every: "week" | "2weeks" | "month"; until: string }
-/** One entry in «رحلة التواصل». Dates are plain "YYYY-MM-DD" (no time zone). */
+/** One entry in «تقويم التواصل». Dates are plain "YYYY-MM-DD" (no time zone). */
 export type CalendarEvent = {
   id: string
   title: string
