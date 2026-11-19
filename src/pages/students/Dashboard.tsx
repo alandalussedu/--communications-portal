@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { AlertTriangle, ArrowDownUp, Building2, ChevronDown, CircleGauge, Info, Pencil, Percent, Search, Sparkles, Target, UserMinus, Users, X } from "lucide-react"
+import { AlertTriangle, ArrowDownUp, Building2, ChevronDown, CircleGauge, Info, Pencil, Percent, Search, Sparkles, Target, TrendingUp, UserMinus, Users, X } from "lucide-react"
 import type { StudentCounts, StudentRow, StudentTarget } from "@/data/types"
 import { formatDate, formatNumber } from "@/lib/format"
 import { OCCUPANCY_LEVELS, WITHDRAWAL_LEVELS, growthPreliminary, notesFor, occupancyStatus, pct, shortName, signedPct, targetSummary, withdrawalStatus, yearLabel, type Tone } from "@/lib/students"
@@ -133,16 +133,20 @@ function Kpis({ row, prev, prevDate, preliminary, branchNotes, target }: { row: 
           {prev && prevDate && <p className="mt-2 text-[12px] text-band-soft"><Ltr>{row.current - prev.current >= 0 ? "+" : "−"}{formatNumber(Math.abs(row.current - prev.current))}</Ltr> عن سحب {formatDate(prevDate)}</p>}
         </li>
         <Kpi icon={<Sparkles className="h-4 w-4" aria-hidden="true" />} label="الطلاب الجدد" value={formatNumber(row.newcomers)}>
-          {row.growth !== null && (
-            <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
-              نمو الحاليين عن العام الماضي{" "}
-              <b className={row.growth >= 0 ? "text-ok" : "text-bad"}>
-                <Ltr>{signedPct(row.growth)}</Ltr>
-              </b>{" "}
-              {preliminary && <span className="rounded-full bg-gold-soft px-1.5 text-[11px] font-bold text-gold-ink">مبدئية</span>}
-            </p>
-          )}
+          <p className="mt-2 text-[13px] leading-6 text-muted-foreground">بحالة «مستجد» في سحب النظام</p>
           <Delta now={row.newcomers} before={prev?.newcomers} kind="count" prevDate={prevDate} />
+        </Kpi>
+        {/* نسبة النمو: its own card (طلب مدير المنصة) */}
+        <Kpi
+          icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
+          label="نسبة النمو"
+          value={row.growth === null ? "—" : <span className={row.growth >= 0 ? "text-ok" : "text-bad"}><Ltr>{signedPct(row.growth)}</Ltr></span>}
+          chip={row.growth !== null && preliminary ? <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[12px] font-bold text-gold-ink">مبدئية</span> : undefined}
+        >
+          <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+            {row.growth === null ? "لا يحمل الملف عدد العام الماضي" : row.previous !== null ? <>الحاليون عن العام الماضي (<b className="num text-foreground">{formatNumber(row.previous)}</b> طالبًا)</> : "الحاليون عن عدد طلاب العام الماضي"}
+          </p>
+          <Delta now={row.growth} before={prev?.growth} kind="rate" prevDate={prevDate} />
         </Kpi>
         <Kpi icon={<UserMinus className="h-4 w-4" aria-hidden="true" />} label="المنسحبون" value={formatNumber(row.withdrawn)}>
           {row.transferred !== null && <p className="mt-2 text-[13px] leading-6 text-muted-foreground">لا يشمل {formatNumber(row.transferred)} محوّلًا إلى فرع آخر</p>}
@@ -174,7 +178,7 @@ function TargetCard({ target, counts, year, onEdit }: { target: StudentTarget | 
   const t = targetSummary(target, counts)
   const share = t.total > 0 ? t.current / t.total : 0
   return (
-    <li className={cn("col-span-1 min-w-0 rounded-2xl p-5 md:col-span-3 xl:col-span-2", t.total ? "border border-gold/60 bg-gold-soft" : "border-2 border-dashed border-gold/60 bg-gold-soft/60")}>
+    <li className={cn("col-span-2 min-w-0 rounded-2xl p-5 md:col-span-2 xl:col-span-1", t.total ? "border border-gold/60 bg-gold-soft" : "border-2 border-dashed border-gold/60 bg-gold-soft/60")}>
       <header className="flex min-w-0 items-center gap-2 text-[14px] font-bold text-muted-foreground">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-gold/20 text-gold-ink"><Target className="h-4 w-4" aria-hidden="true" /></span>
         <span className="min-w-0 truncate">مستهدف <bdi dir="ltr">{yearLabel(year)}</bdi></span>
@@ -216,7 +220,7 @@ function TargetCard({ target, counts, year, onEdit }: { target: StudentTarget | 
   )
 }
 
-function Kpi({ icon, label, value, chip, children }: { icon: ReactNode; label: string; value: string; chip?: ReactNode; children?: ReactNode }) {
+function Kpi({ icon, label, value, chip, children }: { icon: ReactNode; label: string; value: ReactNode; chip?: ReactNode; children?: ReactNode }) {
   return (
     <li className="min-w-0 rounded-2xl border bg-card p-5">
       <KpiHead icon={icon} label={label} />
