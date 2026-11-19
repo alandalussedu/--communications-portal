@@ -67,12 +67,12 @@ function H({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   )
 }
 
-function Kpi({ label, value, sub, chip }: { label: string; value: string; sub?: ReactNode; chip?: { tone: Tone; label: string } }) {
+function Kpi({ label, value, sub, chip, color }: { label: ReactNode; value: ReactNode; sub?: ReactNode; chip?: { tone: Tone; label: string }; color?: string }) {
   return (
     <div className="rounded-lg border border-t-4 border-t-primary px-3 py-2">
       <div className="text-[11.5px] text-muted-foreground">{label}</div>
       <div className="mt-1 flex items-center gap-1.5">
-        <span className="num text-[22px] font-extrabold leading-none text-primary">{value}</span>
+        <span className="num text-[22px] font-extrabold leading-none text-primary" style={color ? { color } : undefined}>{value}</span>
         {chip && <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ background: SOFT[chip.tone].bg, color: SOFT[chip.tone].fg }}>{chip.label}</span>}
       </div>
       {sub && <div className="mt-1 text-[10.5px] text-muted-foreground">{sub}</div>}
@@ -184,20 +184,28 @@ export function studentsPages(c: StudentCounts, target: StudentTarget | null = n
   const pages: ((n: number, total: number) => ReactNode)[] = [
     (n, total) => (
       <Page key="p1" n={n} total={total} generatedAt={generatedAt} first={{ title: studentsTitle(c), sub: `العام الدراسي ${c.year.replace("-", "/")} · ${formatNumber(c.branches.length)} فرعًا في تقرير النظام` }}>
-        <div className="mb-4 grid grid-cols-3 gap-2.5">
+        {/* two even rows of four, in the order of the students page */}
+        <div className="mb-4 grid grid-cols-4 gap-2">
           <Kpi label="الطلاب الحاليون" value={formatNumber(t.current)} sub={t.regular !== null ? `منتظم ${formatNumber(t.regular)} · مستجد ${formatNumber(t.newcomers)}` : undefined} />
-          <Kpi label="الطلاب الجدد" value={formatNumber(t.newcomers)} sub={t.growth !== null ? <>نمو الحاليين <Ltr>{signedPct(t.growth)}</Ltr>{growthPreliminary(c) ? " (مبدئي)" : ""}</> : undefined} />
+          <Kpi label="الطلاب الجدد" value={formatNumber(t.newcomers)} sub="بحالة «مستجد» في سحب النظام" />
+          <Kpi
+            label="نسبة النمو"
+            value={t.growth === null ? "—" : <Ltr>{signedPct(t.growth)}</Ltr>}
+            color={t.growth === null ? undefined : t.growth >= 0 ? FILL.ok : FILL.bad}
+            chip={t.growth !== null && growthPreliminary(c) ? { tone: "warn", label: "مبدئية" } : undefined}
+            sub={t.previous !== null ? `عن العام الماضي (${formatNumber(t.previous)} طالبًا)` : "عن عدد طلاب العام الماضي"}
+          />
           <Kpi label="المنسحبون" value={formatNumber(t.withdrawn)} sub={t.transferred !== null ? `لا يشمل ${formatNumber(t.transferred)} محوّلًا إلى فرع آخر` : undefined} />
-          <Kpi label="نسبة الانسحاب" value={pct(t.withdrawalRate)} chip={ws} sub="جيد حتى 8% · متابعة حتى 12% · مرتفع فوقها" />
+          <Kpi label="نسبة الانسحاب" value={pct(t.withdrawalRate)} chip={ws} sub="جيد حتى 8% · متابعة حتى 12%" />
           <Kpi label="نسبة الإشغال" value={pct(t.occupancy)} chip={os} sub="مرتفع من 85% · جيد من 70%" />
           <Kpi label="الطاقة التشغيلية" value={formatNumber(t.capacity)} sub={`${formatNumber(Math.max(t.capacity - t.current, 0))} مقعدًا متاحًا`} />
+          <Kpi
+            label={<>مستهدف <Ltr>{yearLabel(targetYear)}</Ltr></>}
+            value={ts.total > 0 ? formatNumber(ts.total) : "—"}
+            color={ts.total > 0 ? undefined : "#8a8a99"}
+            sub={ts.total === 0 ? "لم يُحدَّد بعد" : ts.complete ? <>الحاليون <span className="num">{pct(ts.current / ts.total)}</span> منه</> : `مُدخل لـ ${formatNumber(ts.entered)} من ${formatNumber(ts.of)} فرعًا`}
+          />
         </div>
-        {ts.total > 0 && (
-          <p className="-mt-1 mb-3 rounded-lg px-4 py-2 text-[12px]" style={{ background: "#fbf6e8" }}>
-            <b>مستهدف العام القادم <Ltr>{yearLabel(targetYear)}</Ltr>:</b> <span className="num">{formatNumber(ts.total)}</span> طالبًا
-            {ts.complete ? <> · الحاليون <span className="num">{pct(ts.current / ts.total)}</span> منه</> : <> · مُدخل لـ {formatNumber(ts.entered)} من {formatNumber(ts.of)} فرعًا</>}
-          </p>
-        )}
         <H sub="الحاليون مقابل الطاقة التشغيلية، مرتبة من الأعلى إشغالًا.">نسبة الإشغال لكل فرع</H>
         <OccupancyBars c={c} />
         {alerts.length > 0 && (
